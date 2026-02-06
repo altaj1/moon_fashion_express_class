@@ -1,0 +1,25 @@
+services:
+    postgres:
+        image: postgres:17
+        container_name: moon_fashion_postgres
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: moon_fashion
+            POSTGRES_PASSWORD: moon_fashion
+            POSTGRES_DB: moon_fashion_db
+        ports:
+            - '5435:5432'
+        volumes:
+            - moon_fashion_data:/var/lib/postgresql/data
+        networks:
+            - moon_fashion_network
+
+networks:
+    moon_fashion_network:
+        driver: bridge
+        name: moon_fashion_network
+
+volumes:
+    moon_fashion_data:
+        driver: local
+        name: moon_fashion_data

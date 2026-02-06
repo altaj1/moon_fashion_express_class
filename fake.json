@@ -1,0 +1,100 @@
+{
+  "piNumber": "PI-2026-002",
+  "date": "2026-02-06T00:00:00.000Z",
+  "type": "EXPORT",
+  "buyerId": "3f8c2f5e-9f3a-4a62-bc2a-1d4a5f6a7b8c",
+  "userId": "a1b2c3d4-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+  "totalAmount": 2500.0,
+  "status": "DRAFT",
+  "invoiceItem": {
+    "fabricItem": {
+      "styleNo": "FAB-1002",
+      "discription": "Premium Linen Fabric",
+      "width": "60 inch",
+      "totalNetWeight": 300,
+      "totalGrossWeight": 315,
+      "totalQuantityYds": 600,
+      "totalUnitPrice": 3,
+      "totalAmount": 1800,
+      "fabricItemData": [
+        {
+          "color": "White",
+          "netWeight": 150,
+          "grossWeight": 157.5,
+          "quantityYds": 300,
+          "unitPrice": 3,
+          "totalAmount": 900
+        },
+        {
+          "color": "Beige",
+          "netWeight": 150,
+          "grossWeight": 157.5,
+          "quantityYds": 300,
+          "unitPrice": 3,
+          "totalAmount": 900
+        }
+      ]
+    },
+    "labelItem": {
+      "styleNo": "LBL-2002",
+      "netWeightTotal": 20,
+      "grossWeightTotal": 22,
+      "quantityDznTotal": 100,
+      "quantityPcsTotal": 1200,
+      "unitPriceTotal": 2,
+      "totalAmount": 200,
+      "labelItemData": [
+        {
+          "desscription": "Size L Label",
+          "color": "Red",
+          "netWeight": 10,
+          "grossWeight": 11,
+          "quantityDzn": 50,
+          "quantityPcs": 600,
+          "unitPrice": 2,
+          "TotalAmount": 100
+        },
+        {
+          "desscription": "Size M Label",
+          "color": "Blue",
+          "netWeight": 10,
+          "grossWeight": 11,
+          "quantityDzn": 50,
+          "quantityPcs": 600,
+          "unitPrice": 2,
+          "TotalAmount": 100
+        }
+      ]
+    },
+    "cartonItem": {
+      "orderNo": "CART-3002",
+      "totalcartonQty": 200,
+      "totalNetWeight": 1000,
+      "totalGrossWeight": 1040,
+      "totalUnitPrice": 2,
+      "cartonItemData": [
+        {
+          "cartonMeasurement": "20x20x20",
+          "cartonPly": "3",
+          "cartonQty": 100,
+          "netWeight": 500,
+          "grossWeight": 520,
+          "unit": "kg",
+          "unitPrice": 2,
+          "totalAmount": 1000
+        },
+        {
+          "cartonMeasurement": "25x25x25",
+          "cartonPly": "4",
+          "cartonQty": 100,
+          "netWeight": 500,
+          "grossWeight": 520,
+          "unit": "kg",
+          "unitPrice": 2,
+          "totalAmount": 1000
+        }
+      ]
+    }
+  },
+  "invoiceTermsId": "3f8c2f5e-9f3a-4a62-bc2a-1d4a5f6a7b8c"
+}
