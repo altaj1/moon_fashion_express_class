@@ -112,7 +112,7 @@ enum PIStatus {
 
 model Invoice {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  piNumber  String @unique
+  piNumber  String 
   date      DateTime
   type      InvoiceType
 
@@ -125,8 +125,7 @@ model Invoice {
   totalAmount Decimal @default(0)
   status      PIStatus @default(DRAFT)
 
-  invoiceItemId String @unique @db.Uuid
-  invoiceItem InvoiceItem? @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
+  invoiceItems InvoiceItem[]
 
   invoiceTermsId String? @db.Uuid
   invoiceTerms InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
@@ -141,25 +140,26 @@ model Invoice {
 
 // ================= INVOICE ITEM =================
 
+
+
 model InvoiceItem {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  fabricId String? @unique @db.Uuid
-  labelId String? @unique @db.Uuid
-  cartonId String? @unique @db.Uuid
+  fabricId String? @db.Uuid
+  labelId  String? @db.Uuid
+  cartonId String? @db.Uuid
   
   fabricItem FabricItem? @relation(fields: [fabricId], references: [id], onDelete: SetNull)
-  labelItem LabelItem? @relation(fields: [labelId], references: [id], onDelete: SetNull )
+  labelItem  LabelItem?  @relation(fields: [labelId], references: [id], onDelete: SetNull)
   cartonItem CartonItem? @relation(fields: [cartonId], references: [id], onDelete: SetNull)
 
-  invoice Invoice?
-invoiceId String?   @db.Uuid
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  invoiceId String?  @db.Uuid
+
   createdAt DateTime @default(now())
 
   @@map("invoice_items")
 }
-
-
 
 
 
@@ -177,7 +177,7 @@ model LabelItem {
   quantityPcsTotal Decimal?
   unitPriceTotal Decimal?
   totalAmount Decimal?
-  invoiceItem InvoiceItem?
+  invoiceItems InvoiceItem[]
 
   createdAt DateTime @default(now())
 
@@ -196,7 +196,7 @@ model LabelItemData {
   quantityDzn Decimal?
   quantityPcs Decimal?
   unitPrice Decimal?
-  TotalAmount Decimal?
+  totalAmount Decimal?
   labelItemId String @db.Uuid
   labelItem LabelItem @relation("LabelItemToLabelItemData", fields: [labelItemId], references: [id], onDelete: Cascade)
 
@@ -218,7 +218,7 @@ model FabricItem {
   totalUnitPrice Decimal?
   totalAmount Decimal?
   fabricItemData FabricItemData[] @relation("FabricItemToFabricItemData")
-  invoiceItem InvoiceItem?
+  invoiceItems InvoiceItem[]
 
   createdAt DateTime @default(now())
 
@@ -254,7 +254,7 @@ model CartonItem {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderNo String
   
-  invoiceItem InvoiceItem?
+  invoiceItems InvoiceItem[]
   cartonItemData CartonItemData[] @relation("CartonItemToCartonItemData")
   totalcartonQty Int?
   totalNetWeight Decimal?

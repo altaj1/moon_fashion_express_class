@@ -3,7 +3,7 @@ import { InvoiceController } from "./invoice.controller";
 import { InvoiceValidation } from "./invoice.validation";
 import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
-
+import { authenticate } from "@/middleware/auth";
 export class InvoiceRoutes {
   private router: Router;
   private controller: InvoiceController;
@@ -27,6 +27,7 @@ export class InvoiceRoutes {
     // Define Routes
     this.router.post(
       "/",
+      authenticate,
       createValidator,
       asyncHandler((req, res) => this.controller.create(req, res)),
     );

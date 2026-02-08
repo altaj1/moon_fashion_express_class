@@ -1,158 +1,9 @@
-// import { BaseService } from "@/core/BaseService";
-// import { PrismaClient, InvoiceType } from "@/generated/prisma/client";
-// import { PaginationOptions } from "@/types/types";
-// import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
-// import { prisma } from "@/lib/prisma";
-// export class InvoiceService extends BaseService<
-//   any,
-//   CreateInvoiceInput,
-//   UpdateInvoiceInput
-// > {
-//   constructor(prisma: PrismaClient) {
-//     super(prisma, "Invoice", {
-//       enableSoftDelete: true,
-//       enableAuditFields: true,
-//     });
-//   }
-
-//   protected getModel() {
-//     // @ts-ignore - The model 'invoice' might not exist in PrismaClient types yet
-//     return this.prisma.invoice;
-//   }
-
-//   // =========================================================================
-//   // Public API - Exposing BaseService methods
-//   // Since BaseService methods are protected, we must expose them here
-//   // =========================================================================
-
-//   public async create(data: CreateInvoiceInput, include?: any) {
-//     const { type, invoiceItem, invoiceTermsId, ...invoiceRest } = data;
-
-//     let invoiceItemCreateData: any = {};
-
-//     if (type === InvoiceType.FABRIC && invoiceItem?.fabricItem) {
-//       const fabric = invoiceItem.fabricItem;
-
-//       invoiceItemCreateData = {
-//         fabricItem: {
-//           create: {
-//             styleNo: fabric.styleNo,
-//             discription: fabric.discription,
-//             width: fabric.width,
-//             totalNetWeight: fabric.totalNetWeight,
-//             totalGrossWeight: fabric.totalGrossWeight,
-//             totalQuantityYds: fabric.totalQuantityYds,
-//             totalUnitPrice: fabric.totalUnitPrice,
-//             totalAmount: fabric.totalAmount,
-
-//             fabricItemData: {
-//               createMany: {
-//                 data: fabric.fabricItemData || [],
-//               },
-//             },
-//           },
-//         },
-//       };
-//     } else if (type === InvoiceType.LABEL_TAG && invoiceItem?.labelItem) {
-//       const label = invoiceItem.labelItem;
-
-//       invoiceItemCreateData = {
-//         labelItem: {
-//           create: {
-//             styleNo: label.styleNo,
-//             netWeightTotal: label.netWeightTotal,
-//             grossWeightTotal: label.grossWeightTotal,
-//             quantityDznTotal: label.quantityDznTotal,
-//             quantityPcsTotal: label.quantityPcsTotal,
-//             unitPriceTotal: label.unitPriceTotal,
-//             totalAmount: label.totalAmount,
-
-//             labelItemData: {
-//               createMany: {
-//                 data: label.labelItemData || [],
-//               },
-//             },
-//           },
-//         },
-//       };
-//     } else if (type === InvoiceType.CARTON && invoiceItem?.cartonItem) {
-//       const carton = invoiceItem.cartonItem;
-
-//       invoiceItemCreateData = {
-//         cartonItem: {
-//           create: {
-//             orderNo: carton.orderNo,
-//             totalcartonQty: carton.totalcartonQty,
-//             totalNetWeight: carton.totalNetWeight,
-//             totalGrossWeight: carton.totalGrossWeight,
-//             totalUnitPrice: carton.totalUnitPrice,
-
-//             cartonItemData: {
-//               createMany: {
-//                 data: carton.cartonItemData || [],
-//               },
-//             },
-//           },
-//         },
-//       };
-//     }
-
-//     if (Object.keys(invoiceItemCreateData).length === 0) {
-//       throw new Error(
-//         `Invalid invoice type or missing item data for type: ${type}`,
-//       );
-//     }
-
-//     console.log(
-//       "Creating invoice with data:",
-//       JSON.stringify(invoiceItemCreateData, null, 2),
-//     );
-//     return prisma.invoice.create({
-//       data: {
-//         ...invoiceRest,
-//         type,
-//         invoiceTermsId,
-//         //   status: data.status || PIStatus.DRAFT,
-
-//         invoiceItem: {
-//           create: invoiceItemCreateData,
-//         },
-//       },
-//       include,
-//     });
-//     // return super.create();
-//   }
-//   public async findMany(
-//     filters: any = {},
-//     pagination?: Partial<PaginationOptions>,
-//     orderBy?: any,
-//     include?: any,
-//   ) {
-//     return super.findMany(filters, pagination, orderBy, include);
-//   }
-
-//   public async findById(id: string, include?: any) {
-//     return super.findById(id, include);
-//   }
-
-//   public async updateById(id: string, data: UpdateInvoiceInput, include?: any) {
-//     return super.updateById(id, data, include);
-//   }
-
-//   public async deleteById(id: string) {
-//     return super.deleteById(id);
-//   }
-
-//   public async exists(filters: any) {
-//     return super.exists(filters);
-//   }
-// }
-
 import { BaseService } from "@/core/BaseService";
 import { prisma } from "@/lib/prisma";
 import { PrismaClient, InvoiceType } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
+import { AppError } from "@/core/errors/AppError";
 
 export class InvoiceService extends BaseService<
   any,
@@ -161,7 +12,7 @@ export class InvoiceService extends BaseService<
 > {
   constructor() {
     super(prisma, "Invoice", {
-      enableSoftDelete: true,
+      enableSoftDelete: false,
       enableAuditFields: true,
     });
   }
@@ -175,224 +26,377 @@ export class InvoiceService extends BaseService<
   // Public API - Exposing BaseService methods
   // =========================================================================
 
-  public async create(data: CreateInvoiceInput, include?: any) {
-    const { type, invoiceItem, invoiceTermsId, ...invoiceRest } = data;
+  private mapInvoiceItemData(item: any, itemType: string) {
+    const nestedDataKey =
+      itemType === "fabricItem"
+        ? "fabricItemData"
+        : itemType === "labelItem"
+          ? "labelItemData"
+          : "cartonItemData";
 
-    let invoiceItemCreateData: any = {};
+    const nestedData =
+      item[nestedDataKey]?.map((d: any) => ({
+        ...d,
+        totalAmount: d.totalAmount ?? d.TotalAmount ?? 0,
+      })) || [];
 
-    if (type === InvoiceType.FABRIC && invoiceItem?.fabricItem) {
-      const fabric = invoiceItem.fabricItem;
+    let totals = {};
 
-      invoiceItemCreateData = {
-        fabricItem: {
-          create: {
-            styleNo: fabric.styleNo,
-            discription: fabric.discription,
-            width: fabric.width,
-            totalNetWeight: fabric.totalNetWeight,
-            totalGrossWeight: fabric.totalGrossWeight,
-            totalQuantityYds: fabric.totalQuantityYds,
-            totalUnitPrice: fabric.totalUnitPrice,
-            totalAmount: fabric.totalAmount,
-
-            fabricItemData: {
-              createMany: {
-                data: fabric.fabricItemData || [],
-              },
-            },
-          },
-        },
-      };
-    } else if (type === InvoiceType.LABEL_TAG && invoiceItem?.labelItem) {
-      const label = invoiceItem.labelItem;
-
-      invoiceItemCreateData = {
-        labelItem: {
-          create: {
-            styleNo: label.styleNo,
-            netWeightTotal: label.netWeightTotal,
-            grossWeightTotal: label.grossWeightTotal,
-            quantityDznTotal: label.quantityDznTotal,
-            quantityPcsTotal: label.quantityPcsTotal,
-            unitPriceTotal: label.unitPriceTotal,
-            totalAmount: label.totalAmount,
-
-            labelItemData: {
-              createMany: {
-                data: label.labelItemData || [],
-              },
-            },
-          },
-        },
-      };
-    } else if (type === InvoiceType.CARTON && invoiceItem?.cartonItem) {
-      const carton = invoiceItem.cartonItem;
-
-      invoiceItemCreateData = {
-        cartonItem: {
-          create: {
-            orderNo: carton.orderNo,
-            totalcartonQty: carton.totalcartonQty,
-            totalNetWeight: carton.totalNetWeight,
-            totalGrossWeight: carton.totalGrossWeight,
-            totalUnitPrice: carton.totalUnitPrice,
-
-            cartonItemData: {
-              createMany: {
-                data: carton.cartonItemData || [],
-              },
-            },
-          },
-        },
-      };
+    if (itemType === "labelItem") {
+      totals = this.calculateLabelItemTotals(nestedData);
     }
 
-    if (Object.keys(invoiceItemCreateData).length === 0) {
-      throw new Error(
-        `Invalid invoice type '${type}' or missing corresponding item data`,
+    if (itemType === "fabricItem") {
+      totals = this.calculateFabricItemTotals(nestedData);
+    }
+
+    if (itemType === "cartonItem") {
+      totals = this.calculateCartonItemTotals(nestedData);
+    }
+
+    return {
+      [itemType]: {
+        create: {
+          ...item,
+          ...totals, // ✅ totals injected BEFORE DB insert
+          [nestedDataKey]: {
+            createMany: {
+              data: nestedData,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  private calculateLabelItemTotals(data: any[]) {
+    return data.reduce(
+      (acc, item) => {
+        acc.netWeightTotal += Number(item.netWeight ?? 0);
+        acc.grossWeightTotal += Number(item.grossWeight ?? 0);
+        acc.quantityDznTotal += Number(item.quantityDzn ?? 0);
+        acc.quantityPcsTotal += Number(item.quantityPcs ?? 0);
+        acc.unitPriceTotal += Number(item.unitPrice ?? 0);
+        acc.totalAmount += Number(item.totalAmount ?? item.TotalAmount ?? 0);
+        return acc;
+      },
+      {
+        netWeightTotal: 0,
+        grossWeightTotal: 0,
+        quantityDznTotal: 0,
+        quantityPcsTotal: 0,
+        unitPriceTotal: 0,
+        totalAmount: 0,
+      },
+    );
+  }
+  private calculateCartonItemTotals(data: any[]) {
+    return data.reduce(
+      (acc, item) => {
+        acc.totalcartonQty += Number(item.cartonQty ?? 0);
+        acc.totalNetWeight += Number(item.netWeight ?? 0);
+        acc.totalGrossWeight += Number(item.grossWeight ?? 0);
+        acc.totalUnitPrice += Number(item.unitPrice ?? 0);
+        return acc;
+      },
+      {
+        totalcartonQty: 0,
+        totalNetWeight: 0,
+        totalGrossWeight: 0,
+        totalUnitPrice: 0,
+      },
+    );
+  }
+
+  private calculateFabricItemTotals(data: any[]) {
+    return data.reduce(
+      (acc, item) => {
+        acc.totalNetWeight += Number(item.netWeight ?? 0);
+        acc.totalGrossWeight += Number(item.grossWeight ?? 0);
+        acc.totalQuantityYds += Number(item.quantityYds ?? 0);
+        acc.totalUnitPrice += Number(item.unitPrice ?? 0);
+        acc.totalAmount += Number(item.totalAmount ?? item.TotalAmount ?? 0);
+        return acc;
+      },
+      {
+        totalNetWeight: 0,
+        totalGrossWeight: 0,
+        totalQuantityYds: 0,
+        totalUnitPrice: 0,
+        totalAmount: 0,
+      },
+    );
+  }
+
+  public async create(
+    data: CreateInvoiceInput,
+    userId: string | undefined,
+    include?: any,
+  ) {
+    try {
+      const {
+        type,
+        invoiceItem,
+        invoiceTermsId,
+        buyerId,
+
+        ...invoiceRest
+      } = data;
+
+      if (!invoiceItem) {
+        throw new AppError(
+          400,
+          "Invoice item is required for creating an invoice",
+        );
+      }
+
+      let invoiceItemCreateData: any = {};
+
+      // Determine which item type exists
+      switch (type) {
+        case InvoiceType.FABRIC:
+          invoiceItemCreateData = this.mapInvoiceItemData(
+            invoiceItem?.fabricItem,
+            "fabricItem",
+          );
+          break;
+
+        case InvoiceType.LABEL_TAG:
+          invoiceItemCreateData = this.mapInvoiceItemData(
+            invoiceItem?.labelItem,
+            "labelItem",
+          );
+          break;
+
+        case InvoiceType.CARTON:
+          invoiceItemCreateData = this.mapInvoiceItemData(
+            invoiceItem?.cartonItem,
+            "cartonItem",
+          );
+          break;
+
+        default:
+          throw new AppError(400, `Invalid invoice type '${type}'`);
+      }
+      console.log(JSON.stringify(invoiceItemCreateData, null, 2));
+      // Build the payload for Prisma
+      const prismaData: any = {
+        ...invoiceRest,
+        type,
+        buyer: { connect: { id: data.buyerId } },
+        user: { connect: { id: userId } },
+        invoiceTerms: { connect: { id: invoiceTermsId } },
+        invoiceItems: {
+          create: [invoiceItemCreateData],
+        },
+      };
+      console.log("{ prismaData }", JSON.stringify(prismaData, null, 2));
+
+      const result = await prisma.invoice.create({
+        data: prismaData,
+      });
+
+      return result;
+    } catch (err: any) {
+      console.error("Invoice creation failed:", err);
+
+      throw new AppError(
+        err.message || "Failed to create invoice",
+        err.statusCode || 500,
       );
     }
+  }
 
-    console.log(
-      "Creating invoice with data:",
-      JSON.stringify(
-        {
-          ...invoiceRest,
-          type,
-          buyerId: data.buyerId,
-          userId: data.userId,
-          invoiceTermsId,
-          invoiceItem: invoiceItemCreateData,
-        },
-        null,
-        2,
-      ),
-    );
-    console.log(
-      "Invoice model has buyerId field?",
-      "buyerId" in prisma.invoice.fields,
-    );
-    console.log(
-      "Invoice model has userId field?",
-      "userId" in prisma.invoice.fields,
-    );
-    // return prisma.invoice.create({
-    //   data: {
-    //     ...invoiceRest,
-    //     type,
-    //     buyerId: data.buyerId,
-    //     userId: data.userId,
-    //     invoiceTermsId,
-    //     invoiceItem: {
-    //       create: invoiceItemCreateData,
-    //     },
-    //   },
-    //   include,
-    // });
-    // return super.create(
-    //   {
-    //     ...invoiceRest,
-    //     type,
-    //     // buyerId: data.buyerId,
-    //     // userId: data.userId,
-    //     // invoiceTermsId,
-    //     buyer: {
-    //       connect: {
-    //         id: data.buyerId!,
-    //       },
-    //     },
-    //     user: {
-    //       connect: {
-    //         id: data.userId!,
-    //       },
-    //     },
-    //     invoiceTerms: {
-    //       connect: {
-    //         id: invoiceTermsId!,
-    //       },
-    //     },
-    //     invoiceItem: {
-    //       create: invoiceItemCreateData,
-    //     },
-    //   },
-    //   include,
-    // );
+  public async findMany(query: any = {}, include?: any) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      ...restFilters
+    } = query;
 
-    const result = await prisma.invoice.create({
-      data: {
-        piNumber: "PI-2026-002",
-        date: new Date("2026-02-06"),
-        type: "FABRIC",
-        totalAmount: 2500,
-        status: "DRAFT",
-        buyer: {
-          connect: { id: "3a907837-5e00-40ea-b607-ae12573c22b3" },
-        },
-        user: {
-          connect: { id: "99bbf61c-ae94-475b-a7a1-2a5adc905287" },
-        },
-        invoiceTerms: {
-          connect: { id: "17c186ed-e987-470c-a32c-d612a044b65d" },
-        },
-        invoiceItem: {
-          create: {
+    // Build search filters
+    let filters: any = { ...restFilters };
+
+    if (search) {
+      filters.OR = [
+        { piNumber: { contains: search, mode: "insensitive" } },
+        { type: { contains: search, mode: "insensitive" } },
+        // Add more searchable fields if needed
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const total = await this.prisma.invoice.count({ where: filters });
+    const data = await this.prisma.invoice.findMany({
+      where: filters,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+
+      //  POPULATE ALL IDS HERE
+      include: {
+        buyer: true,
+        user: true,
+        invoiceTerms: true,
+
+        invoiceItems: {
+          include: {
             fabricItem: {
-              create: {
-                styleNo: "FAB-1002",
-                discription: "Premium Linen Fabric",
-                width: "60 inch",
-                totalNetWeight: 300,
-                totalGrossWeight: 315,
-                totalQuantityYds: 600,
-                totalUnitPrice: 3,
-                totalAmount: 1800,
-                fabricItemData: {
-                  createMany: {
-                    data: [
-                      {
-                        color: "White",
-                        netWeight: 150,
-                        grossWeight: 157.5,
-                        quantityYds: 300,
-                        unitPrice: 3,
-                        totalAmount: 900,
-                      },
-                      {
-                        color: "Beige",
-                        netWeight: 150,
-                        grossWeight: 157.5,
-                        quantityYds: 300,
-                        unitPrice: 3,
-                        totalAmount: 900,
-                      },
-                    ],
-                  },
-                },
+              include: {
+                fabricItemData: true,
+              },
+            },
+            labelItem: {
+              include: {
+                labelItemData: true,
+              },
+            },
+            cartonItem: {
+              include: {
+                cartonItemData: true,
               },
             },
           },
         },
       },
     });
-    console.log("Created invoice:", JSON.stringify(result, null, 2));
-    return result;
-  }
 
-  public async findMany(
-    filters: any = {},
-    pagination?: Partial<PaginationOptions>,
-    orderBy?: any,
-    include?: any,
-  ) {
-    return super.findMany(filters, pagination, orderBy, include);
+    return {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrevious: page > 1,
+      data,
+    };
   }
 
   public async findById(id: string, include?: any) {
-    return super.findById(id, include);
+    return super.findById(id, {
+      buyer: true,
+      user: true,
+      invoiceTerms: true,
+
+      invoiceItems: {
+        include: {
+          fabricItem: {
+            include: {
+              fabricItemData: true,
+            },
+          },
+          labelItem: {
+            include: {
+              labelItemData: true,
+            },
+          },
+          cartonItem: {
+            include: {
+              cartonItemData: true,
+            },
+          },
+        },
+      },
+    });
   }
 
-  public async updateById(id: string, data: UpdateInvoiceInput, include?: any) {
-    return super.updateById(id, data, include);
+  public async updateById(
+    id: string,
+    data: UpdateInvoiceInput,
+    userId?: string,
+    include?: any,
+  ) {
+    try {
+      const { type, invoiceItem, buyerId, invoiceTermsId, ...invoiceRest } =
+        data;
+
+      const prismaData: any = {
+        ...invoiceRest,
+      };
+
+      // Update type if provided
+      if (type) {
+        prismaData.type = type;
+      }
+
+      // Update buyer relation
+      // if (buyerId) {
+      //   prismaData.buyer = {ß
+      //     connect: { id: buyerId },
+      //   };
+      // }
+
+      // // Update user relation
+      // if (userId) {
+      //   prismaData.user = {
+      //     connect: { id: userId },
+      //   };
+      // }
+
+      // Update invoice terms
+      if (invoiceTermsId) {
+        prismaData.invoiceTerms = {
+          connect: { id: invoiceTermsId },
+        };
+      }
+
+      // Update invoice items (replace old ones)
+      if (type && invoiceItem) {
+        let invoiceItemCreateData: any;
+
+        switch (type) {
+          case InvoiceType.FABRIC:
+            invoiceItemCreateData = this.mapInvoiceItemData(
+              invoiceItem.fabricItem,
+              "fabricItem",
+            );
+            break;
+
+          case InvoiceType.LABEL_TAG:
+            invoiceItemCreateData = this.mapInvoiceItemData(
+              invoiceItem.labelItem,
+              "labelItem",
+            );
+            break;
+
+          case InvoiceType.CARTON:
+            invoiceItemCreateData = this.mapInvoiceItemData(
+              invoiceItem.cartonItem,
+              "cartonItem",
+            );
+            break;
+
+          default:
+            throw new AppError(400, `Invalid invoice type '${type}'`);
+        }
+
+        prismaData.invoiceItems = {
+          deleteMany: {}, // remove old items
+          create: [invoiceItemCreateData],
+        };
+      }
+      console.log({ prismaData });
+      const result = await prisma.invoice.update({
+        where: { id },
+        data: prismaData,
+        include,
+      });
+
+      return result;
+    } catch (err: any) {
+      console.error("Invoice update failed:", err);
+
+      throw new AppError(
+        err.message || "Failed to update invoice",
+        err.statusCode || 500,
+      );
+    }
   }
 
   public async deleteById(id: string) {

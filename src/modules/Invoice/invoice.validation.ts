@@ -102,18 +102,35 @@ export const InvoiceValidation = {
   update: z
     .object({
       piNumber: z.string().min(2).optional(),
+
       date: z
         .string()
         .refine((val) => !isNaN(Date.parse(val)), {
           message: "Invalid date format",
         })
         .optional(),
-      type: z.enum(["EXPORT", "LOCAL"]).optional(),
+
+      type: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
+
       buyerId: z.string().uuid().optional(),
+
+      // ⚠️ userId should usually come from auth, not request body
+      // keep only if admin is allowed to change owner
       userId: z.string().uuid().optional(),
+
       totalAmount: z.number().nonnegative().optional(),
+
       status: z.enum(["DRAFT", "FINAL", "PAID"]).optional(),
+
       invoiceTermsId: z.string().uuid().optional(),
+
+      invoiceItem: z
+        .object({
+          fabricItem: z.any().optional(),
+          labelItem: z.any().optional(),
+          cartonItem: z.any().optional(),
+        })
+        .optional(),
     })
     .strict(),
 
