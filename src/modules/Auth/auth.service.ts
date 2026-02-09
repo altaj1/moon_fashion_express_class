@@ -25,9 +25,9 @@ import {
 } from "./auth.validation";
 import { HTTPStatusCode } from "@/types/HTTPStatusCode";
 import {
-  AccountStatus,
   PrismaClient,
   User,
+  UserAccountStatus,
   UserRole,
 } from "@/generated/prisma/client";
 import { sendImageToCloudinary } from "@/utils/sendImageToCloudinery";
@@ -110,7 +110,7 @@ export class AuthService extends BaseService<User> {
       displayName: `${firstName} ${lastName}`,
       role,
       avatarUrl: uploadedAvatarUrl.secure_url || "",
-      status: AccountStatus.pending_verification,
+      status: UserAccountStatus.pending_verification,
     });
 
     // Send OTP for email verification
@@ -149,7 +149,7 @@ export class AuthService extends BaseService<User> {
       throw new NotFoundError("User not found");
     }
 
-    if (user.status === AccountStatus.active) {
+    if (user.status === UserAccountStatus.active) {
       throw new BadRequestError("Email already verified");
     }
 
@@ -164,7 +164,7 @@ export class AuthService extends BaseService<User> {
     }
 
     const updatedUser = await this.updateById(user.id, {
-      status: AccountStatus.active,
+      status: UserAccountStatus.active,
       emailVerifiedAt: new Date(),
     });
 
@@ -189,7 +189,7 @@ export class AuthService extends BaseService<User> {
       throw new NotFoundError("User");
     }
 
-    if (user.status === AccountStatus.active) {
+    if (user.status === UserAccountStatus.active) {
       throw new BadRequestError("Email already verified");
     }
 
@@ -220,13 +220,13 @@ export class AuthService extends BaseService<User> {
       throw new AuthenticationError("Invalid email or password");
     }
 
-    // if (user.status === AccountStatus.pending_verification) {
+    // if (user.status === UserAccountStatus.pending_verification) {
     //     throw new AuthenticationError('Please verify your email first', {
     //         requiresVerification: true,
     //     });
     // }
 
-    // if (user.status !== AccountStatus.active) {
+    // if (user.status !== UserAccountStatus.active) {
     //     throw new AuthenticationError(`Account is ${user.status.replace('_', ' ')}`);
     // }
 
@@ -256,7 +256,7 @@ export class AuthService extends BaseService<User> {
     const { email } = data;
 
     const user = await this.findOne({ email });
-    if (!user || user.status !== AccountStatus.active) {
+    if (!user || user.status !== UserAccountStatus.active) {
       // Generic message for security
       return {
         message:
@@ -438,7 +438,7 @@ export class AuthService extends BaseService<User> {
       ) as JWTPayload;
       const user = await this.findById(decoded.id);
 
-      if (!user || user.status !== AccountStatus.active) {
+      if (!user || user.status !== UserAccountStatus.active) {
         throw new AuthenticationError("Session invalid or account inactive");
       }
 
@@ -463,7 +463,7 @@ export class AuthService extends BaseService<User> {
       ) as JWTPayload;
       const user = await this.findById(decoded.id);
 
-      if (!user || user.status !== AccountStatus.active) {
+      if (!user || user.status !== UserAccountStatus.active) {
         throw new AuthenticationError("User not found or inactive");
       }
 
@@ -483,7 +483,7 @@ export class AuthService extends BaseService<User> {
   async getAuthStats() {
     const [total, active, admin] = await Promise.all([
       this.count(),
-      this.count({ status: AccountStatus.active }),
+      this.count({ status: UserAccountStatus.active }),
       this.count({ role: UserRole.admin }),
     ]);
 

@@ -13,6 +13,7 @@ export const InvoiceValidation = {
       type: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]),
       buyerId: z.string().uuid("Invalid buyer ID").optional(),
       userId: z.string().uuid("Invalid user ID").optional(),
+      companyProfileId: z.string().uuid("Invalid company profile ID"),
       totalAmount: z.number().nonnegative(),
       // status: z.enum(["DRAFT", "FINAL", "PAID"]).default("DRAFT"),
       invoiceTermsId: z.string().uuid().optional(),

@@ -7,6 +7,8 @@ import { BuyerModule } from "./modules/Buyer/BuyerModule";
 import { InvoiceModule } from "./modules/Invoice/InvoiceModule";
 import { InvoiceTermsModule } from "./modules/InvoiceTerms/InvoiceTermsModule";
 import { UserModule } from "./modules/User/UserModule";
+import { CompanyProfileModule } from "./modules/CompanyProfile/CompanyProfileModule";
+import { OrderModule } from "./modules/Order/OrderModule";
 // Main application bootstrap function
 async function bootstrap() {
   try {
@@ -23,6 +25,8 @@ async function bootstrap() {
     app.registerModule(new InvoiceModule());
     app.registerModule(new InvoiceTermsModule());
     app.registerModule(new UserModule());
+    app.registerModule(new CompanyProfileModule());
+    app.registerModule(new OrderModule());
     AppLogger.info("✔ All modules registered successfully");
 
     // Start the server

@@ -18,7 +18,7 @@ export const sendImageToCloudinary = (
 ): Promise<UploadApiResponse> => {
   return new Promise((resolve, reject) => {
     if (!path) return reject(new Error("File path missing"));
-
+    console.log("inside cloudinary", { imageName, path, folderName });
     cloudinary.uploader.upload(
       path,
       {
@@ -26,6 +26,7 @@ export const sendImageToCloudinary = (
         folder: folderName || config.cloudinary.imageFolderName,
       },
       async (error, result) => {
+        console.log({ error, result });
         if (error) return reject(error);
 
         try {

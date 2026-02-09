@@ -2,7 +2,7 @@
 CREATE TYPE "UserRole" AS ENUM ('admin', 'user');
 
 -- CreateEnum
-CREATE TYPE "AccountStatus" AS ENUM ('active', 'inactive', 'suspended', 'pending_verification');
+CREATE TYPE "UserAccountStatus" AS ENUM ('active', 'inactive', 'suspended', 'pending_verification');
 
 -- CreateEnum
 CREATE TYPE "OTPType" AS ENUM ('email_verification', 'login_verification', 'password_reset', 'two_factor');
@@ -22,7 +22,7 @@ CREATE TABLE "User" (
     "lastName" TEXT NOT NULL,
     "displayName" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'user',
-    "status" "AccountStatus" NOT NULL DEFAULT 'active',
+    "status" "UserAccountStatus" NOT NULL DEFAULT 'active',
     "password" TEXT NOT NULL,
     "isPasswordChanged" BOOLEAN NOT NULL DEFAULT false,
     "emailVerifiedAt" TIMESTAMP(3),

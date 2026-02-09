@@ -1,6 +1,7 @@
+import { InvoiceCreateInput } from "./../../generated/prisma/models/Invoice";
 import { BaseService } from "@/core/BaseService";
 import { prisma } from "@/lib/prisma";
-import { PrismaClient, InvoiceType } from "@/generated/prisma/client";
+import { PrismaClient, InvoiceType, Prisma } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
 import { AppError } from "@/core/errors/AppError";
@@ -58,7 +59,7 @@ export class InvoiceService extends BaseService<
       [itemType]: {
         create: {
           ...item,
-          ...totals, // ✅ totals injected BEFORE DB insert
+          ...totals,
           [nestedDataKey]: {
             createMany: {
               data: nestedData,
@@ -139,7 +140,7 @@ export class InvoiceService extends BaseService<
         invoiceItem,
         invoiceTermsId,
         buyerId,
-
+        companyProfileId,
         ...invoiceRest
       } = data;
 
@@ -180,11 +181,12 @@ export class InvoiceService extends BaseService<
       }
       console.log(JSON.stringify(invoiceItemCreateData, null, 2));
       // Build the payload for Prisma
-      const prismaData: any = {
+      const prismaData: Prisma.InvoiceCreateInput = {
         ...invoiceRest,
         type,
         buyer: { connect: { id: data.buyerId } },
         user: { connect: { id: userId } },
+        companyProfile: { connect: { id: companyProfileId } },
         invoiceTerms: { connect: { id: invoiceTermsId } },
         invoiceItems: {
           create: [invoiceItemCreateData],
@@ -244,7 +246,7 @@ export class InvoiceService extends BaseService<
         buyer: true,
         user: true,
         invoiceTerms: true,
-
+        companyProfile: true,
         invoiceItems: {
           include: {
             fabricItem: {
@@ -283,7 +285,7 @@ export class InvoiceService extends BaseService<
       buyer: true,
       user: true,
       invoiceTerms: true,
-
+      companyProfile: true,
       invoiceItems: {
         include: {
           fabricItem: {

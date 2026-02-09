@@ -6,7 +6,7 @@ import { UpdateUserInput } from "./user.validation";
 import { User } from "@/generated/prisma/client";
 import { NotFoundError } from "@/core/errors/AppError";
 import { AppLogger } from "@/core/logging/logger";
-import { AccountStatus } from "@/generated/prisma/client";
+import { UserAccountStatus } from "@/generated/prisma/client";
 import { fi } from "zod/v4/locales";
 export class UserService extends BaseService<any, UpdateUserInput> {
   constructor(prisma: PrismaClient) {
@@ -79,7 +79,7 @@ export class UserService extends BaseService<any, UpdateUserInput> {
   async updateUserRole(
     userId: string,
     newRole: UserRole,
-    newStatus: AccountStatus,
+    newStatus: UserAccountStatus,
   ): Promise<Omit<User, "password">> {
     const user = await this.findById(userId);
     if (!user) {

@@ -14,7 +14,7 @@ enum UserRole {
   user
 }
 
-enum AccountStatus {
+enum UserAccountStatus {
   active
   inactive
   suspended
@@ -36,7 +36,7 @@ model User {
   lastName          String
   displayName       String?
   role              UserRole @default(user)
-  status            AccountStatus @default(active)
+  status            UserAccountStatus @default(active)
   password          String
   isPasswordChanged Boolean @default(false)
   emailVerifiedAt   DateTime?
@@ -45,7 +45,8 @@ model User {
   lastLoginAt       DateTime?
 
   otps              OTP[]
-  invoices          Invoice[]
+  invoices          Invoice[] 
+  orders            Order[] 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,36 +86,33 @@ model Buyer {
   phone        String
   address      String
   location     String
-
-  invoices     Invoice[]
+  orders       Order[]
+  lcManagements LCManagement[]
   isDeleted         Boolean @default(false)
- deletedAt DateTime?
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-// ================= INVOICE ENUMS =================
-
-enum InvoiceType {
+// ================= ORDER =================
+enum ProductType {
   FABRIC
   LABEL_TAG
   CARTON
 }
-
-enum PIStatus {
+enum OrderStatus {
   DRAFT
-  SENT
+  PENDING
+  PROCESSING
   APPROVED
+  DELIVERED
   CANCELLED
 }
-
-// ================= INVOICE =================
-
-model Invoice {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  piNumber  String 
-  date      DateTime
-  type      InvoiceType
+model Order {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber String
+  orderDate DateTime?
+  remarks String?
+  productType ProductType
 
   buyerId   String @db.Uuid
   buyer     Buyer? @relation(fields: [buyerId], references: [id])
@@ -122,27 +120,20 @@ model Invoice {
   userId    String @db.Uuid
   user      User? @relation(fields: [userId], references: [id])
 
-  totalAmount Decimal @default(0)
-  status      PIStatus @default(DRAFT)
-
-  invoiceItems InvoiceItem[]
-
-  invoiceTermsId String? @db.Uuid
-  invoiceTerms InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
-
+  companyProfileId String @db.Uuid
+  companyProfile CompanyProfile @relation(fields: [companyProfileId], references: [id])
+  orderItems OrderItem[]
+  isDeleted         Boolean @default(false)
+  status OrderStatus @default(DRAFT)
+  deletedAt DateTime?
+  deliveryDate DateTime?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("invoices")
 }
 
-
-
-// ================= INVOICE ITEM =================
-
-
-
-model InvoiceItem {
+model OrderItem {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   fabricId String? @db.Uuid
@@ -153,17 +144,53 @@ model InvoiceItem {
   labelItem  LabelItem?  @relation(fields: [labelId], references: [id], onDelete: SetNull)
   cartonItem CartonItem? @relation(fields: [cartonId], references: [id], onDelete: SetNull)
 
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
-  invoiceId String?  @db.Uuid
-
+  orderId   String? @db.Uuid
+  order     Order? @relation(fields: [orderId], references: [id])
   createdAt DateTime @default(now())
 
-  @@map("invoice_items")
+  @@map("order_items")
 }
 
 
+// ================= FABRIC =================
+
+model FabricItem {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  styleNo    String
+  discription String?
+  width String?
+  totalNetWeight Decimal?
+  totalGrossWeight Decimal?
+  totalQuantityYds Decimal?
+  totalUnitPrice Decimal?
+  totalAmount Decimal?
+  fabricItemData FabricItemData[] @relation("FabricItemToFabricItemData")
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+
+  @@map("fabric_items")
+}
 
 
+model FabricItemData {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  color String?
+  netWeight Decimal?
+  grossWeight Decimal?
+  quantityYds Decimal?
+  unitPrice Decimal?
+  totalAmount Decimal?
+
+
+  fabricItemId String @db.Uuid
+  fabricItem FabricItem @relation("FabricItemToFabricItemData", fields: [fabricItemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("fabric_item_data")
+}
 
 // ================= LABEL =================
 
@@ -177,7 +204,7 @@ model LabelItem {
   quantityPcsTotal Decimal?
   unitPriceTotal Decimal?
   totalAmount Decimal?
-  invoiceItems InvoiceItem[]
+  orderItems OrderItem[]
 
   createdAt DateTime @default(now())
 
@@ -205,56 +232,13 @@ model LabelItemData {
   @@map("label_item_data")
 }
 
-// ================= FABRIC =================
-
-model FabricItem {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  styleNo    String
-  discription String?
-  width String?
-  totalNetWeight Decimal?
-  totalGrossWeight Decimal?
-  totalQuantityYds Decimal?
-  totalUnitPrice Decimal?
-  totalAmount Decimal?
-  fabricItemData FabricItemData[] @relation("FabricItemToFabricItemData")
-  invoiceItems InvoiceItem[]
-
-  createdAt DateTime @default(now())
-
-  @@map("fabric_items")
-}
-
-
-model FabricItemData {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  
-  color String?
-  netWeight Decimal?
-  grossWeight Decimal?
-  quantityYds Decimal?
-  unitPrice Decimal?
-  totalAmount Decimal?
-
-
-  fabricItemId String @db.Uuid
-  fabricItem FabricItem @relation("FabricItemToFabricItemData", fields: [fabricItemId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@map("fabric_item_data")
-}
-
-
-
-
 // ================= CARTON =================
 
 model CartonItem {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderNo String
   
-  invoiceItems InvoiceItem[]
+  orderItems OrderItem[]
   cartonItemData CartonItemData[] @relation("CartonItemToCartonItemData")
   totalcartonQty Int?
   totalNetWeight Decimal?
@@ -265,11 +249,8 @@ model CartonItem {
   @@map("carton_items")
 }
 
-
-
 model CartonItemData {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  
   
   cartonMeasurement String?
   cartonPly String?
@@ -287,6 +268,78 @@ model CartonItemData {
 
   @@map("carton_item_data")
 }
+
+
+// ================= INVOICE ENUMS =================
+
+enum InvoiceType {
+  FABRIC
+  LABEL_TAG
+  CARTON
+}
+
+enum PIStatus {
+  DRAFT
+  SENT
+  APPROVED
+  CANCELLED
+}
+
+// ================= INVOICE =================
+
+model Invoice {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  piNumber  String 
+  date      DateTime
+  type      InvoiceType
+
+  buyerId   String @db.Uuid
+
+  userId    String @db.Uuid
+  user      User? @relation(fields: [userId], references: [id])
+
+  totalAmount Decimal @default(0)
+  status      PIStatus @default(DRAFT)
+  
+  companyProfileId String @db.Uuid
+  companyProfile CompanyProfile @relation(fields: [companyProfileId], references: [id])
+  invoiceItems InvoiceItem[]
+  lcManagement LCManagement[]
+  invoiceTermsId String? @db.Uuid
+  invoiceTerms InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+
+// ================= INVOICE ITEM =================
+
+model InvoiceItem {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  fabricId String? @db.Uuid
+  labelId  String? @db.Uuid
+  cartonId String? @db.Uuid
+  
+
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  invoiceId String?  @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  @@map("invoice_items")
+}
+
+
+
+
+
+
+
+
 
 // ================= TERMS =================
 
@@ -309,4 +362,72 @@ model InvoiceTerms {
   invoices Invoice[]
 
   @@map("invoice_terms")
+}
+
+// ================= Company Profile =================
+
+// ================= CompanyStatusEnum =================
+enum CompanyUserAccountStatus {
+  active
+  inactive
+
+}
+enum CompanyType {
+  PARENT
+  SISTER
+}
+
+
+model CompanyProfile {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  address      String?
+  phone        String?
+  // Need to update user relation
+  email        String?
+  website      String?
+  logoUrl      String?
+  city         String?
+  country      String?
+  companyType CompanyType @default(PARENT)
+  postalCode    String?
+  taxId        String?
+  registrationNumber String?
+  tradeLicenseNumber String?
+  tradeLicenseExpiryDate DateTime?
+  isDeleted         Boolean @default(false)
+  status           CompanyUserAccountStatus @default(active)
+  bankName         String?
+  bankAccountNumber String?
+  branchName       String?
+  swiftCode        String?
+  routingNumber     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  invoices Invoice[]
+  orders Order[]
+}
+
+// LC Management 
+
+model LCManagement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bblcNumber   String
+  dateOfOpening DateTime
+  notifyParty   String?
+  lcIssueBankName   String
+  lcIssueBankBranch String
+  destination      String?
+  
+  issueDate    DateTime
+  expiryDate   DateTime
+  amount       Decimal
+  buyerId      String @db.Uuid
+  buyer        Buyer? @relation(fields: [buyerId], references: [id])
+  invoiceId    String @db.Uuid
+  invoice      Invoice? @relation(fields: [invoiceId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lc_managements")
 }
