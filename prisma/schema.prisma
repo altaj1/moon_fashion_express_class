@@ -125,11 +125,13 @@ model Order {
   orderItems OrderItem[]
   isDeleted         Boolean @default(false)
   status OrderStatus @default(DRAFT)
+
   deletedAt DateTime?
   deliveryDate DateTime?
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  invoices Invoice[]
 
 }
 
@@ -272,11 +274,6 @@ model CartonItemData {
 
 // ================= INVOICE ENUMS =================
 
-enum InvoiceType {
-  FABRIC
-  LABEL_TAG
-  CARTON
-}
 
 enum PIStatus {
   DRAFT
@@ -289,56 +286,24 @@ enum PIStatus {
 
 model Invoice {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  piNumber  String 
+  piNumber  String  @unique
   date      DateTime
-  type      InvoiceType
-
-  buyerId   String @db.Uuid
 
   userId    String @db.Uuid
   user      User? @relation(fields: [userId], references: [id])
 
-  totalAmount Decimal @default(0)
   status      PIStatus @default(DRAFT)
-  
-  companyProfileId String @db.Uuid
-  companyProfile CompanyProfile @relation(fields: [companyProfileId], references: [id])
-  invoiceItems InvoiceItem[]
+
   lcManagement LCManagement[]
   invoiceTermsId String? @db.Uuid
   invoiceTerms InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
-
+  orderId String @db.Uuid
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("invoices")
 }
-
-
-// ================= INVOICE ITEM =================
-
-model InvoiceItem {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  fabricId String? @db.Uuid
-  labelId  String? @db.Uuid
-  cartonId String? @db.Uuid
-  
-
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
-  invoiceId String?  @db.Uuid
-
-  createdAt DateTime @default(now())
-
-  @@map("invoice_items")
-}
-
-
-
-
-
-
-
 
 
 // ================= TERMS =================
@@ -367,10 +332,11 @@ model InvoiceTerms {
 // ================= Company Profile =================
 
 // ================= CompanyStatusEnum =================
-enum CompanyUserAccountStatus {
+enum CompanyAccountStatus {
   active
   inactive
 
+	@@map("CompanyAccountStatus")
 }
 enum CompanyType {
   PARENT
@@ -396,7 +362,7 @@ model CompanyProfile {
   tradeLicenseNumber String?
   tradeLicenseExpiryDate DateTime?
   isDeleted         Boolean @default(false)
-  status           CompanyUserAccountStatus @default(active)
+  status           CompanyAccountStatus @default(active)
   bankName         String?
   bankAccountNumber String?
   branchName       String?
@@ -404,7 +370,6 @@ model CompanyProfile {
   routingNumber     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  invoices Invoice[]
   orders Order[]
 }
 

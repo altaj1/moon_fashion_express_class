@@ -1,8 +1,14 @@
 import { BaseService } from "@/core/BaseService";
-import { PrismaClient } from "@/generated/prisma/client";
+import {
+  OrderStatus,
+  Prisma,
+  PrismaClient,
+  ProductType,
+} from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateOrderInput, UpdateOrderInput } from "./order.validation";
-
+import { AppError } from "@/core/errors/AppError";
+import { prisma } from "@/lib/prisma";
 export class OrderService extends BaseService<
   any,
   CreateOrderInput,
@@ -25,7 +31,7 @@ export class OrderService extends BaseService<
   // Since BaseService methods are protected, we must expose them here
   // =========================================================================
 
-  private mapInvoiceItemData(item: any, itemType: string) {
+  private mapOrdeItemData(item: any, itemType: string) {
     const nestedDataKey =
       itemType === "fabricItem"
         ? "fabricItemData"
@@ -127,25 +133,274 @@ export class OrderService extends BaseService<
     );
   }
 
-  public async create(data: CreateOrderInput, include?: any) {
-    return super.create(data, include);
-  }
-
-  public async findMany(
-    filters: any = {},
-    pagination?: Partial<PaginationOptions>,
-    orderBy?: any,
+  public async create(
+    data: CreateOrderInput,
+    userId: string | undefined,
     include?: any,
   ) {
-    return super.findMany(filters, pagination, orderBy, include);
+    try {
+      const {
+        productType,
+        orderItems,
+        // invoiceTermsId,
+        buyerId,
+        companyProfileId,
+        ...invoiceRest
+      } = data;
+
+      if (!orderItems) {
+        throw new AppError(400, "Order item is required for creating an order");
+      }
+
+      let orderItemCreateData: any = {};
+
+      // Determine which item type exists
+      switch (productType) {
+        case ProductType.FABRIC:
+          orderItemCreateData = this.mapOrdeItemData(
+            orderItems?.fabricItem,
+            "fabricItem",
+          );
+          break;
+
+        case ProductType.LABEL_TAG:
+          orderItemCreateData = this.mapOrdeItemData(
+            orderItems?.labelItem,
+            "labelItem",
+          );
+          break;
+
+        case ProductType.CARTON:
+          orderItemCreateData = this.mapOrdeItemData(
+            orderItems?.cartonItem,
+            "cartonItem",
+          );
+          break;
+
+        default:
+          throw new AppError(400, `Invalid invoice type '${productType}'`);
+      }
+      console.log(JSON.stringify(orderItemCreateData, null, 2));
+      // Build the payload for Prisma
+      const prismaData: Prisma.OrderCreateInput = {
+        ...invoiceRest,
+        productType,
+        buyer: { connect: { id: data.buyerId } },
+        user: { connect: { id: userId } },
+        companyProfile: { connect: { id: companyProfileId } },
+        // invoiceTerms: { connect: { id: invoiceTermsId } },
+        orderItems: {
+          create: [orderItemCreateData],
+        },
+      };
+      console.log("{ prismaData }", JSON.stringify(prismaData, null, 2));
+
+      const result = await prisma.order.create({
+        data: prismaData,
+      });
+
+      return result;
+    } catch (err: any) {
+      console.error("Invoice creation failed:", err);
+
+      throw new AppError(
+        err.message || "Failed to create invoice",
+        err.statusCode || 500,
+      );
+    }
+  }
+
+  public async findMany(query: any = {}, include?: any) {
+    console.log({ query });
+
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      ...restFilters
+    } = query;
+    // Build search filters
+    let filters: any = { ...restFilters };
+
+    if (search) {
+      filters.OR = [
+        { piNumber: { contains: search, mode: "insensitive" } },
+        { type: { contains: search, mode: "insensitive" } },
+        // Add more searchable fields if needed
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const total = await this.prisma.order.count({ where: filters });
+    const data = await this.prisma.order.findMany({
+      where: filters,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+
+      //  POPULATE ALL IDS HERE
+      include: {
+        buyer: true,
+        user: true,
+        // invoiceTerms: true,
+        companyProfile: true,
+        orderItems: {
+          include: {
+            fabricItem: {
+              include: {
+                fabricItemData: true,
+              },
+            },
+            labelItem: {
+              include: {
+                labelItemData: true,
+              },
+            },
+            cartonItem: {
+              include: {
+                cartonItemData: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrevious: page > 1,
+      data,
+    };
   }
 
   public async findById(id: string, include?: any) {
-    return super.findById(id, include);
+    return super.findById(id, {
+      buyer: true,
+      user: true,
+      // invoiceTerms: true,
+      companyProfile: true,
+      orderItems: {
+        include: {
+          fabricItem: {
+            include: {
+              fabricItemData: true,
+            },
+          },
+          labelItem: {
+            include: {
+              labelItemData: true,
+            },
+          },
+          cartonItem: {
+            include: {
+              cartonItemData: true,
+            },
+          },
+        },
+      },
+    });
   }
 
-  public async updateById(id: string, data: UpdateOrderInput, include?: any) {
-    return super.updateById(id, data, include);
+  public async updateById(
+    id: string,
+    data: UpdateOrderInput,
+    userId?: string,
+    include?: any,
+  ) {
+    try {
+      const {
+        productType,
+        orderItems,
+        buyerId,
+        companyProfileId,
+
+        ...invoiceRest
+      } = data;
+      const prismaData: any = {
+        ...invoiceRest,
+      };
+
+      // Update buyer relation
+      if (buyerId) {
+        prismaData.buyer = {
+          connect: { id: buyerId },
+        };
+      }
+
+      // Update invoice items (replace old ones)
+      if (companyProfileId) {
+        prismaData.companyProfile = {
+          connect: { id: companyProfileId },
+        };
+      }
+      if (productType && orderItems) {
+        let invoiceItemUpdateData: any;
+
+        switch (productType) {
+          case ProductType.FABRIC:
+            invoiceItemUpdateData = this.mapOrdeItemData(
+              orderItems.fabricItem,
+              "fabricItem",
+            );
+            break;
+
+          case ProductType.LABEL_TAG:
+            invoiceItemUpdateData = this.mapOrdeItemData(
+              orderItems.labelItem,
+              "labelItem",
+            );
+            break;
+
+          case ProductType.CARTON:
+            invoiceItemUpdateData = this.mapOrdeItemData(
+              orderItems.cartonItem,
+              "cartonItem",
+            );
+            break;
+
+          default:
+            throw new AppError(400, `Invalid order type '${productType}'`);
+        }
+
+        prismaData.orderItems = {
+          deleteMany: {},
+          create: [invoiceItemUpdateData],
+        };
+      }
+      const result = await prisma.order.update({
+        where: { id },
+        data: prismaData,
+        include,
+      });
+      return result;
+    } catch (err: any) {
+      console.error("Invoice update failed:", err);
+
+      throw new AppError(
+        err.message || "Failed to update invoice",
+        err.statusCode || 500,
+      );
+    }
+  }
+
+  public async updateStatus(id: string, status: OrderStatus) {
+    return super.updateById(id, { status });
+  }
+
+  public async softDeleteOrder(id: string, isDeleted: boolean) {
+    return super.updateById(id, {
+      isDeleted,
+      deletedAt: isDeleted ? new Date() : null,
+    });
   }
 
   public async deleteById(id: string) {

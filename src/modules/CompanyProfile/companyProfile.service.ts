@@ -33,13 +33,12 @@ export class CompanyProfileService extends BaseService<
     logoUrl: Express.Multer.File | undefined,
     include?: any,
   ) {
-    console.log("adkjflakjsd", { logoUrl });
     const uploadedLogoUrl = await sendImageToCloudinary(
       `${data.name}_${data.email}`,
-      logoUrl.path,
-      "user_avatars",
+      logoUrl?.path || "",
+      "company_profiles",
     );
-    console.log({ uploadedLogoUrl });
+
     return super.create({ ...data, logoUrl: uploadedLogoUrl?.secure_url });
   }
 

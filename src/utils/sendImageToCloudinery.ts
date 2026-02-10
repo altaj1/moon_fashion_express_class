@@ -18,7 +18,6 @@ export const sendImageToCloudinary = (
 ): Promise<UploadApiResponse> => {
   return new Promise((resolve, reject) => {
     if (!path) return reject(new Error("File path missing"));
-    console.log("inside cloudinary", { imageName, path, folderName });
     cloudinary.uploader.upload(
       path,
       {
@@ -26,7 +25,6 @@ export const sendImageToCloudinary = (
         folder: folderName || config.cloudinary.imageFolderName,
       },
       async (error, result) => {
-        console.log({ error, result });
         if (error) return reject(error);
 
         try {
@@ -67,7 +65,6 @@ export const sendImagesToCloudinary = async (
             });
 
             if (error) {
-              console.log({ error });
               return reject(error);
             }
 
@@ -89,13 +86,11 @@ const isProd = process.env.NODE_ENV === "production";
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = isProd ? "/tmp" : process.cwd() + "/uploads";
-    // console.log('Multer destination:', uploadPath);
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const filename = file.fieldname + "-" + uniqueSuffix;
-    // console.log('Multer filename:', filename);
     cb(null, filename);
   },
 });
@@ -104,8 +99,6 @@ export const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-    console.log("File Filter - Filename:", file.originalname);
-    // console.log('File Filter - Mimetype:', file.mimetype);
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
