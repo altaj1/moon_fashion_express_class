@@ -1,7 +1,7 @@
 import { InvoiceCreateInput } from "./../../generated/prisma/models/Invoice";
 import { BaseService } from "@/core/BaseService";
 import { prisma } from "@/lib/prisma";
-import { PrismaClient, InvoiceType, Prisma } from "@/generated/prisma/client";
+import { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
 import { AppError } from "@/core/errors/AppError";
@@ -132,72 +132,51 @@ export class InvoiceService extends BaseService<
   public async create(
     data: CreateInvoiceInput,
     userId: string | undefined,
-    include?: any,
+    include?: Prisma.InvoiceInclude,
   ) {
     try {
-      const {
-        type,
-        invoiceItem,
-        invoiceTermsId,
-        buyerId,
-        companyProfileId,
-        ...invoiceRest
-      } = data;
+      const { invoiceTermsId, orderId, status, ...invoiceRest } = data;
 
-      if (!invoiceItem) {
+      if (!userId) {
+        throw new AppError(401, "Unauthorized. User ID missing.");
+      }
+      if (!orderId) {
+        throw new AppError(400, "orderId is required to create an invoice.");
+      }
+      if (!invoiceTermsId) {
         throw new AppError(
           400,
-          "Invoice item is required for creating an invoice",
+          "invoiceTermsId is required to create an invoice.",
         );
       }
-
-      let invoiceItemCreateData: any = {};
-
-      // Determine which item type exists
-      switch (type) {
-        case InvoiceType.FABRIC:
-          invoiceItemCreateData = this.mapInvoiceItemData(
-            invoiceItem?.fabricItem,
-            "fabricItem",
-          );
-          break;
-
-        case InvoiceType.LABEL_TAG:
-          invoiceItemCreateData = this.mapInvoiceItemData(
-            invoiceItem?.labelItem,
-            "labelItem",
-          );
-          break;
-
-        case InvoiceType.CARTON:
-          invoiceItemCreateData = this.mapInvoiceItemData(
-            invoiceItem?.cartonItem,
-            "cartonItem",
-          );
-          break;
-
-        default:
-          throw new AppError(400, `Invalid invoice type '${type}'`);
-      }
-      console.log(JSON.stringify(invoiceItemCreateData, null, 2));
-      // Build the payload for Prisma
-      const prismaData: Prisma.InvoiceCreateInput = {
+      // ✅ Build Prisma payload
+      const prismaData: any = {
         ...invoiceRest,
-        type,
-        buyer: { connect: { id: data.buyerId } },
-        user: { connect: { id: userId } },
-        companyProfile: { connect: { id: companyProfileId } },
-        invoiceTerms: { connect: { id: invoiceTermsId } },
-        invoiceItems: {
-          create: [invoiceItemCreateData],
+
+        date: new Date(data.date),
+
+        // Required relation
+        order: {
+          connect: { id: orderId },
         },
+
+        // Auth user
+        user: {
+          connect: { id: userId },
+        },
+
+        // Optional relation
+        ...(invoiceTermsId && {
+          invoiceTerms: {
+            connect: { id: invoiceTermsId },
+          },
+        }),
+
+        ...(status && { status }),
       };
-      console.log("{ prismaData }", JSON.stringify(prismaData, null, 2));
 
-      const result = await prisma.invoice.create({
-        data: prismaData,
-      });
-
+      const result = super.create(prismaData, include);
+      console.log({ result });
       return result;
     } catch (err: any) {
       console.error("Invoice creation failed:", err);
@@ -210,6 +189,7 @@ export class InvoiceService extends BaseService<
   }
 
   public async findMany(query: any = {}, include?: any) {
+    console.log("Finding invoices with query:", JSON.stringify(query));
     const {
       page = 1,
       limit = 10,
@@ -220,87 +200,60 @@ export class InvoiceService extends BaseService<
     } = query;
 
     // Build search filters
-    let filters: any = { ...restFilters };
-
+    const filters: any = { ...restFilters };
     if (search) {
       filters.OR = [
         { piNumber: { contains: search, mode: "insensitive" } },
-        { type: { contains: search, mode: "insensitive" } },
-        // Add more searchable fields if needed
+        // { status: { contains: search, mode: "insensitive" } },
       ];
     }
 
-    const skip = (page - 1) * limit;
+    const order: Record<string, "asc" | "desc"> = { [sortBy]: sortOrder };
 
-    const total = await this.prisma.invoice.count({ where: filters });
-    const data = await this.prisma.invoice.findMany({
-      where: filters,
-      skip,
-      take: limit,
-      orderBy: {
-        [sortBy]: sortOrder,
-      },
+    // Pagination
+    const pagination = { page, limit };
 
-      //  POPULATE ALL IDS HERE
-      include: {
-        buyer: true,
-        user: true,
-        invoiceTerms: true,
-        companyProfile: true,
-        invoiceItems: {
-          include: {
-            fabricItem: {
-              include: {
-                fabricItemData: true,
+    // Call BaseService findMany
+    return super.findMany(filters, pagination, order, {
+      user: true,
+      invoiceTerms: true,
+      order: {
+        include: {
+          orderItems: {
+            include: {
+              fabricItem: {
+                include: { fabricItemData: true },
               },
-            },
-            labelItem: {
-              include: {
-                labelItemData: true,
+              labelItem: {
+                include: { labelItemData: true },
               },
-            },
-            cartonItem: {
-              include: {
-                cartonItemData: true,
+              cartonItem: {
+                include: { cartonItemData: true },
               },
             },
           },
         },
       },
     });
-
-    return {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      hasNext: page * limit < total,
-      hasPrevious: page > 1,
-      data,
-    };
   }
 
   public async findById(id: string, include?: any) {
     return super.findById(id, {
-      buyer: true,
       user: true,
       invoiceTerms: true,
-      companyProfile: true,
-      invoiceItems: {
+      order: {
         include: {
-          fabricItem: {
+          orderItems: {
             include: {
-              fabricItemData: true,
-            },
-          },
-          labelItem: {
-            include: {
-              labelItemData: true,
-            },
-          },
-          cartonItem: {
-            include: {
-              cartonItemData: true,
+              fabricItem: {
+                include: { fabricItemData: true },
+              },
+              labelItem: {
+                include: { labelItemData: true },
+              },
+              cartonItem: {
+                include: { cartonItemData: true },
+              },
             },
           },
         },
@@ -315,85 +268,18 @@ export class InvoiceService extends BaseService<
     include?: any,
   ) {
     try {
-      const { type, invoiceItem, buyerId, invoiceTermsId, ...invoiceRest } =
-        data;
+      const { invoiceTermsId, ...invoiceRest } = data;
 
       const prismaData: any = {
         ...invoiceRest,
+        ...(invoiceTermsId && {
+          invoiceTerms: { connect: { id: invoiceTermsId } },
+        }),
       };
 
-      // Update type if provided
-      if (type) {
-        prismaData.type = type;
-      }
-
-      // Update buyer relation
-      // if (buyerId) {
-      //   prismaData.buyer = {ß
-      //     connect: { id: buyerId },
-      //   };
-      // }
-
-      // // Update user relation
-      // if (userId) {
-      //   prismaData.user = {
-      //     connect: { id: userId },
-      //   };
-      // }
-
-      // Update invoice terms
-      if (invoiceTermsId) {
-        prismaData.invoiceTerms = {
-          connect: { id: invoiceTermsId },
-        };
-      }
-
-      // Update invoice items (replace old ones)
-      if (type && invoiceItem) {
-        let invoiceItemCreateData: any;
-
-        switch (type) {
-          case InvoiceType.FABRIC:
-            invoiceItemCreateData = this.mapInvoiceItemData(
-              invoiceItem.fabricItem,
-              "fabricItem",
-            );
-            break;
-
-          case InvoiceType.LABEL_TAG:
-            invoiceItemCreateData = this.mapInvoiceItemData(
-              invoiceItem.labelItem,
-              "labelItem",
-            );
-            break;
-
-          case InvoiceType.CARTON:
-            invoiceItemCreateData = this.mapInvoiceItemData(
-              invoiceItem.cartonItem,
-              "cartonItem",
-            );
-            break;
-
-          default:
-            throw new AppError(400, `Invalid invoice type '${type}'`);
-        }
-
-        prismaData.invoiceItems = {
-          deleteMany: {}, // remove old items
-          create: [invoiceItemCreateData],
-        };
-      }
-      console.log({ prismaData });
-      const result = await prisma.invoice.update({
-        where: { id },
-        data: prismaData,
-        include,
-      });
-
-      return result;
+      return super.updateById(id, prismaData, include);
     } catch (err: any) {
       console.error("Invoice update failed:", err);
-
       throw new AppError(
         err.message || "Failed to update invoice",
         err.statusCode || 500,

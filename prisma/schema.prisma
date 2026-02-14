@@ -87,7 +87,6 @@ model Buyer {
   address      String
   location     String
   orders       Order[]
-  lcManagements LCManagement[]
   isDeleted         Boolean @default(false)
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -387,8 +386,7 @@ model LCManagement {
   issueDate    DateTime
   expiryDate   DateTime
   amount       Decimal
-  buyerId      String @db.Uuid
-  buyer        Buyer? @relation(fields: [buyerId], references: [id])
+
   invoiceId    String @db.Uuid
   invoice      Invoice? @relation(fields: [invoiceId], references: [id])
   createdAt DateTime @default(now())

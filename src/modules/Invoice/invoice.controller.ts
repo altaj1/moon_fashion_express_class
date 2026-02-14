@@ -14,7 +14,7 @@ export class InvoiceController extends BaseController {
   public create = async (req: Request, res: Response) => {
     const body = req.validatedBody;
     this.logAction("create", req, { body });
-
+    console.log("controller user id", req.userId);
     const result = await this.service.create(body, req.userId);
 
     return this.sendCreatedResponse(
@@ -32,8 +32,60 @@ export class InvoiceController extends BaseController {
 
     this.logAction("getAll", req, { query });
 
-    const result = await this.service.findMany(query);
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      startDate,
+      endDate,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = query;
 
+    // Build filters
+    const filters: any = {};
+
+    // Handle search safely
+    if (search) {
+      const enumValues = ["DRAFT", "SENT", "APPROVED", "CANCELLED"]; // your enum
+      const searchEnum = enumValues.find((val) => val === search.toUpperCase());
+
+      filters.OR = [
+        { piNumber: { contains: search, mode: "insensitive" } },
+        ...(searchEnum ? [{ status: searchEnum }] : []),
+      ];
+    }
+
+    // Filter by exact status if provided separately
+    if (status) {
+      filters.status = status;
+    }
+
+    // Date filters
+    if (startDate || endDate) {
+      filters.date = {};
+      if (startDate) filters.date.gte = new Date(startDate as string);
+      if (endDate) filters.date.lte = new Date(endDate as string);
+    }
+
+    // Call service
+    const result = await this.service.findMany({
+      ...filters,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    });
+    // Transform each order's orderItems array into a single object
+    const transformedData = result.data.map((invoice: any) => ({
+      ...invoice,
+      order: {
+        ...invoice.order,
+        orderItems: invoice.order?.orderItems?.[0] || null,
+      },
+    }));
+    // Send paginated response
     return this.sendPaginatedResponse(
       res,
       {
@@ -45,7 +97,7 @@ export class InvoiceController extends BaseController {
         hasPrevious: result.hasPrevious,
       },
       "Invoices retrieved successfully",
-      result.data,
+      transformedData,
     );
   };
 
@@ -66,11 +118,19 @@ export class InvoiceController extends BaseController {
       );
     }
 
+    // Transform orderItems array into a single object
+    const transformedResult = {
+      ...result,
+      order: {
+        ...result.order,
+        orderItems: result.order?.orderItems?.[0] || null,
+      },
+    };
     return this.sendResponse(
       res,
       "Invoice retrieved successfully",
       HTTPStatusCode.OK,
-      result,
+      transformedResult,
     );
   };
 

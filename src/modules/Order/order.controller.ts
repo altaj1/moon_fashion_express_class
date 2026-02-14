@@ -28,7 +28,11 @@ export class OrderController extends BaseController {
     this.logAction("getAll", req, { query });
 
     const result = await this.service.findMany(query);
-
+    // Transform each order's orderItems array into a single object
+    const transformedData = result.data.map((order) => ({
+      ...order,
+      orderItems: order.orderItems[0] || null,
+    }));
     return this.sendPaginatedResponse(
       res,
       {
@@ -39,8 +43,8 @@ export class OrderController extends BaseController {
         hasNext: result.hasNext,
         hasPrevious: result.hasPrevious,
       },
-      "Invoices retrieved successfully",
-      result.data,
+      "Orders retrieved successfully",
+      transformedData,
     );
   };
   /**
@@ -59,12 +63,18 @@ export class OrderController extends BaseController {
         HTTPStatusCode.NOT_FOUND,
       );
     }
+    console.log({ result });
+    // Flatten orderItems to a single object (if exists)
+    const transformedData = {
+      ...result,
+      orderItems: result.orderItems?.[0] || null,
+    };
 
     return this.sendResponse(
       res,
       "Order retrieved successfully",
       HTTPStatusCode.OK,
-      result,
+      transformedData,
     );
   };
 

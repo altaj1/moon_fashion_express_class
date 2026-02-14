@@ -9,6 +9,7 @@ import { InvoiceTermsModule } from "./modules/InvoiceTerms/InvoiceTermsModule";
 import { UserModule } from "./modules/User/UserModule";
 import { CompanyProfileModule } from "./modules/CompanyProfile/CompanyProfileModule";
 import { OrderModule } from "./modules/Order/OrderModule";
+import { LCManagementModule } from "./modules/LCManagement/LCManagementModule";
 // Main application bootstrap function
 async function bootstrap() {
   try {
@@ -27,6 +28,7 @@ async function bootstrap() {
     app.registerModule(new UserModule());
     app.registerModule(new CompanyProfileModule());
     app.registerModule(new OrderModule());
+    app.registerModule(new LCManagementModule());
     AppLogger.info("✔ All modules registered successfully");
 
     // Start the server

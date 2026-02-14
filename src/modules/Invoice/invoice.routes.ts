@@ -23,6 +23,9 @@ export class InvoiceRoutes {
     const idValidator = validateRequest({
       params: InvoiceValidation.params.id,
     });
+    const listValidator = validateRequest({
+      query: InvoiceValidation.query.list,
+    });
 
     // Define Routes
     this.router.post(
@@ -33,6 +36,7 @@ export class InvoiceRoutes {
     );
     this.router.get(
       "/",
+      listValidator,
       asyncHandler((req, res) => this.controller.getAll(req, res)),
     );
     this.router.get(
