@@ -118,7 +118,8 @@ model Order {
 
   userId    String @db.Uuid
   user      User? @relation(fields: [userId], references: [id])
-
+  isInvoice Boolean @default(false)
+  isLc      Boolean @default(false)
   companyProfileId String @db.Uuid
   companyProfile CompanyProfile @relation(fields: [companyProfileId], references: [id])
   orderItems OrderItem[]
@@ -245,6 +246,7 @@ model CartonItem {
   totalNetWeight Decimal?
   totalGrossWeight Decimal?
   totalUnitPrice Decimal?
+  totalAmount Decimal?
   createdAt DateTime @default(now())
 
   @@map("carton_items")

@@ -197,6 +197,10 @@ export const OrderValidation = {
           "CANCELLED",
         ])
         .optional(),
+      isDeleted: z.boolean().optional(),
+      isInvoice: z.boolean().optional(),
+      isLc: z.boolean().optional(),
+      productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
       sortBy: z
         .enum(["orderNumber", "orderDate", "createdAt"])
         .default("createdAt"),
