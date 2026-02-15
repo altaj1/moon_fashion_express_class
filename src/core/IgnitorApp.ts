@@ -50,11 +50,12 @@ export class IgnitorApp {
     // CORS
     this.app.use(
       cors({
-        origin: [`${config.security.cors.allowedOrigins}`],
+        origin: `${config.security.cors.allowedOrigins}`,
         // credentials: true,
         // optionsSuccessStatus: 200,
       }),
     );
+    console.log("cors:", config.security.cors.allowedOrigins);
     AppLogger.debug(`CORS enabled for ${config.security.cors.allowedOrigins}`);
     // Cookie parser
     this.app.use(cookieParser());
