@@ -372,7 +372,7 @@ model CompanyProfile {
   orders Order[]
 }
 
-// LC Management 
+// LC Management system
 
 model LCManagement {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
