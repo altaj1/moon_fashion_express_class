@@ -3,6 +3,17 @@ import { z } from "zod";
 import { emailSchema } from "@/validation.helper/emailSchema.validation";
 import { roleSchema } from "@/validation.helper/userRole.validation";
 
+// Define allowed modules enum
+const moduleEnum = z.enum([
+  "finance",
+  "account",
+  "order",
+  "buyer",
+  "lcManagement",
+  "inventory",
+  "reports",
+]);
+
 // Password validation with security requirements
 const passwordSchema = z
   .string()
@@ -43,6 +54,15 @@ export const AuthValidation = {
         .trim()
         .optional(),
       role: roleSchema.optional(),
+      designation: z
+        .string()
+        .min(3, "Designation must be at least 3 characters")
+        .max(50, "Designation must not exceed 50 characters")
+        .trim(),
+      modules: z
+        .array(moduleEnum)
+        .min(1, "At least one module must be selected")
+        .optional(),
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()

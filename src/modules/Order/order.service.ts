@@ -195,7 +195,6 @@ export class OrderService extends BaseService<
         default:
           throw new AppError(400, `Invalid invoice type '${productType}'`);
       }
-      console.log(JSON.stringify(orderItemCreateData, null, 2));
       // Build the payload for Prisma
       const prismaData: Prisma.OrderCreateInput = {
         ...invoiceRest,
@@ -208,7 +207,6 @@ export class OrderService extends BaseService<
           create: [orderItemCreateData],
         },
       };
-      console.log("{ prismaData }", JSON.stringify(prismaData, null, 2));
 
       const result = await prisma.order.create({
         data: prismaData,
@@ -226,8 +224,6 @@ export class OrderService extends BaseService<
   }
 
   public async findMany(query: any = {}, include?: any) {
-    console.log({ query });
-
     const {
       page = 1,
       limit = 10,
@@ -290,6 +286,11 @@ export class OrderService extends BaseService<
         user: true,
         // invoiceTerms: true,
         companyProfile: true,
+        invoices: {
+          include: {
+            lcManagement: true,
+          },
+        },
         orderItems: {
           include: {
             fabricItem: {
@@ -329,6 +330,11 @@ export class OrderService extends BaseService<
       user: true,
       // invoiceTerms: true,
       companyProfile: true,
+      invoices: {
+        include: {
+          lcManagement: true,
+        },
+      },
       orderItems: {
         include: {
           fabricItem: {

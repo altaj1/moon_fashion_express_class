@@ -87,7 +87,6 @@ export class InvoiceTermsService extends BaseService<
         { origin: { contains: search, mode: "insensitive" } },
       ];
     }
-    console.log({ rest });
     // Merge any additional filters from query
     filters = { ...filters, ...rest };
 

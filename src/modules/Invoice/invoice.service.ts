@@ -74,7 +74,6 @@ export class InvoiceService extends BaseService<
       };
 
       const result = super.create(prismaData, include);
-      console.log({ result });
       const updateOrderIsInvoice = await prisma.order.update({
         where: {
           id: orderId,
@@ -95,7 +94,6 @@ export class InvoiceService extends BaseService<
   }
 
   public async findMany(query: any = {}, include?: any) {
-    console.log("Finding invoices with query:", JSON.stringify(query));
     const {
       page = 1,
       limit = 10,
@@ -149,6 +147,7 @@ export class InvoiceService extends BaseService<
       invoiceTerms: true,
       order: {
         include: {
+          buyer: true,
           orderItems: {
             include: {
               fabricItem: {

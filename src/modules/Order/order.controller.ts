@@ -63,7 +63,6 @@ export class OrderController extends BaseController {
         HTTPStatusCode.NOT_FOUND,
       );
     }
-    console.log({ result });
     // Flatten orderItems to a single object (if exists)
     const transformedData = {
       ...result,

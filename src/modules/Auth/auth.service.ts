@@ -76,6 +76,8 @@ export class AuthService extends BaseService<User> {
       lastName,
       username,
       role = UserRole.user,
+      designation,
+      modules = [],
     } = data;
 
     // Check if user already exists
@@ -111,6 +113,8 @@ export class AuthService extends BaseService<User> {
       role,
       avatarUrl: uploadedAvatarUrl.secure_url || "",
       status: UserAccountStatus.pending_verification,
+      designation,
+      modules,
     });
 
     // Send OTP for email verification
@@ -365,7 +369,6 @@ export class AuthService extends BaseService<User> {
     currentPassword: string,
     newPassword: string,
   ): Promise<{ message: string }> {
-    console.log({ email });
     const user = await this.findOne({ email });
     if (!user) {
       throw new NotFoundError("User not found");

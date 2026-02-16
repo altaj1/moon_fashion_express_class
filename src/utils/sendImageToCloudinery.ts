@@ -10,11 +10,7 @@ cloudinary.config({
   api_key: config.cloudinary.apiKey,
   api_secret: config.cloudinary.apiSecret,
 });
-console.log({
-  cloud_name: config.cloudinary.cloudName,
-  api_key: config.cloudinary.apiKey,
-  api_secret: config.cloudinary.apiSecret,
-});
+
 export const sendImageToCloudinary = (
   imageName: string,
   path: string,
@@ -22,7 +18,6 @@ export const sendImageToCloudinary = (
 ): Promise<UploadApiResponse> => {
   return new Promise((resolve, reject) => {
     if (!path) return reject(new Error("File path missing"));
-    console.log("Uploading to Cloudinary:", { imageName, path, folderName });
     cloudinary.uploader.upload(
       path,
       {
@@ -30,7 +25,6 @@ export const sendImageToCloudinary = (
         folder: folderName || config.cloudinary.imageFolderName,
       },
       async (error, result) => {
-        console.log({ error, result });
         if (error) return reject(error);
 
         try {

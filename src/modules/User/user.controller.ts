@@ -17,7 +17,6 @@ export class UserController extends BaseController {
     const pagination = this.extractPaginationParams(req);
 
     const { sortBy, sortOrder, search } = query;
-    console.log({ query });
     const filters: any = {};
 
     if (search) {

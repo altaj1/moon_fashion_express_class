@@ -6,6 +6,7 @@ import { asyncHandler } from "@/middleware/asyncHandler";
 import { authenticate, authorize } from "@/middleware/auth";
 import { AuthValidation } from "./auth.validation";
 import { upload } from "@/utils/sendImageToCloudinery";
+import { parseModules } from "@/middleware/parseModules";
 
 export class AuthRoutes {
   private router: Router;
@@ -24,6 +25,7 @@ export class AuthRoutes {
     this.router.post(
       "/register",
       upload.single("avatar"),
+      parseModules,
       validateRequest({
         body: AuthValidation.register,
       }),

@@ -15,7 +15,6 @@ export class CompanyProfileController extends BaseController {
     const body = req.validatedBody;
     this.logAction("create", req, { body });
     const logoUrl = req.file;
-    console.log({ logoUrl });
     const result = await this.service.create(body, logoUrl);
 
     return this.sendCreatedResponse(
@@ -31,7 +30,6 @@ export class CompanyProfileController extends BaseController {
   public getAll = async (req: Request, res: Response) => {
     const query = req.validatedQuery;
     const pagination = this.extractPaginationParams(req);
-    console.log({ query });
     const {
       search,
       sortBy = "createdAt",

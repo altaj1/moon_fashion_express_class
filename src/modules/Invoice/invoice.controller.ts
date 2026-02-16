@@ -14,7 +14,6 @@ export class InvoiceController extends BaseController {
   public create = async (req: Request, res: Response) => {
     const body = req.validatedBody;
     this.logAction("create", req, { body });
-    console.log("controller user id", req.userId);
     const result = await this.service.create(body, req.userId);
 
     return this.sendCreatedResponse(
@@ -109,7 +108,6 @@ export class InvoiceController extends BaseController {
     this.logAction("getOne", req, { id });
 
     const result = await this.service.findById(id);
-    console.log({ result });
     if (!result) {
       return this.sendResponse(
         res,
