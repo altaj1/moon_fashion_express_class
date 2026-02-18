@@ -31,8 +31,6 @@ export const LCManagementValidation = {
 
       carrier: z.string().min(1, "Carrier is required"),
 
-      selesTerm: z.string().min(1, "Sales term is required"),
-
       issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: "Invalid issue date format",
       }),
