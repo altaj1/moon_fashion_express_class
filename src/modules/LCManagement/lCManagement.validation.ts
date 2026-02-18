@@ -58,8 +58,8 @@ export const LCManagementValidation = {
 
       contactNo: z.string().min(5, "Contact No is required"),
 
-      userId: z.string().uuid("Invalid user ID"),
-
+      userId: z.string().uuid("Invalid user ID").optional(),
+      salesTerm: z.string().min(1, "Sales term is required"),
       invoiceId: z.string().uuid("Invalid invoice ID"),
     })
     .strict(),
