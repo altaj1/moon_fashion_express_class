@@ -46,7 +46,7 @@ export const config = {
   },
   security: {
     cors: {
-      allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",") || ["*"],
+      allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map(o => o.trim()) || ["*"],
     },
     rateLimit: {
       windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"),
@@ -79,6 +79,11 @@ export const config = {
     defaultReplyToEmail: process.env.DEFAULT_REPLY_TO_EMAIL,
     templatePath: process.env.EMAIL_TEMPLATE_PATH,
     defaultFromName: process.env.DEFAULT_FROM_NAME,
+    smtp: {
+      service: process.env.SMTP_SERVICE || "gmail",
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASSWORD,
+    },
   },
   logging: {
     level: process.env.LOG_LEVEL || "info",

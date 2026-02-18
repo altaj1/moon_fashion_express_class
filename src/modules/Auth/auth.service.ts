@@ -55,7 +55,7 @@ export class AuthService extends BaseService<User> {
     });
 
     // Initialize OTP service
-    this.otpService = new OTPService(this.prisma, new SESEmailService());
+    this.otpService = new OTPService(this.prisma);
   }
 
   protected getModel() {
@@ -329,8 +329,8 @@ export class AuthService extends BaseService<User> {
   /**
    * Reset password
    */
-  async resetPassword(data: ResetPasswordInput): Promise<{ message: string }> {
-    const { email, newPassword, currentPassword } = data;
+  async resetPassword(data: Omit<ResetPasswordInput, 'currentPassword'>): Promise<{ message: string }> {
+    const { email, newPassword } = data;
 
     const user = await this.findOne({ email });
     if (!user) {
@@ -339,17 +339,25 @@ export class AuthService extends BaseService<User> {
     if (!newPassword) {
       throw new BadRequestError("New password is required");
     }
+
     // Verify that there is a verified OTP for this email
-    // const hasVerifiedOTP = await this.hasVerifiedOTP(email, OTPType.password_reset);
-    // if (!hasVerifiedOTP) {
-    //     throw new BadRequestError('Password reset code not verified or expired');
-    // }
+    const verifiedOTP = await this.prisma.oTP.findFirst({
+      where: {
+        identifier: email,
+        type: OTPType.password_reset,
+        verified: true,
+      },
+    });
+
+    if (!verifiedOTP) {
+      throw new BadRequestError('Password reset code not verified or expired');
+    }
 
     const hashedPassword = await this.hashPassword(newPassword);
     await this.updateById(user.id, { password: hashedPassword });
 
     // Cleanup after success
-    // await this.otpService.cleanupUserOTPs(email);
+    await this.otpService.cleanupUserOTPs(email);
 
     AppLogger.info("Password reset completed", {
       userId: user.id,
@@ -373,6 +381,7 @@ export class AuthService extends BaseService<User> {
     if (!user) {
       throw new NotFoundError("User not found");
     }
+
     const isValidPassword = await this.verifyPassword(
       currentPassword,
       user.password,

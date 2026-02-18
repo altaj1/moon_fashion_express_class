@@ -6,7 +6,7 @@ export const UserValidation = {
   // Update User
   update: z
     .object({
-      // email: emailSchema.optional(),
+      email: emailSchema.optional(),
       firstName: z
         .string()
         .min(2, "First name must be at least 2 characters")
@@ -26,6 +26,8 @@ export const UserValidation = {
         .trim()
         .optional(),
       role: roleSchema.optional(),
+      designation: z.string().optional(),
+      modules: z.array(z.string()).optional(),
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()
