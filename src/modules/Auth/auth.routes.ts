@@ -141,7 +141,7 @@ export class AuthRoutes {
     );
 
     // Change password
-    this.router.post(
+    this.router.put(
       "/change-password",
       authenticate,
       validateRequest({

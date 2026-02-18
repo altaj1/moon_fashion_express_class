@@ -68,7 +68,15 @@ export const AuthValidation = {
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()
-    .refine((data) => data.password === data.confirmPassword, {
+    .refine((data) => {
+      if (data.password && data.confirmPassword) {
+        return data.password === data.confirmPassword;
+      }
+      if (data.password && !data.confirmPassword) {
+        return false;
+      }
+      return true;
+    }, {
       message: "Passwords do not match",
       path: ["confirmPassword"],
     })
@@ -103,13 +111,12 @@ export const AuthValidation = {
   // Change password validation
   changePassword: z
     .object({
-      email: emailSchema,
       currentPassword: z.string().min(1, "Current password is required"),
       newPassword: passwordSchema,
-      confirmNewPassword: z.string(),
+      confirmNewPassword: z.string().optional(),
     })
     .strict()
-    .refine((data) => data.newPassword === data.confirmNewPassword, {
+    .refine((data) => !data.confirmNewPassword || data.newPassword === data.confirmNewPassword, {
       message: "New passwords do not match",
       path: ["confirmNewPassword"],
     })

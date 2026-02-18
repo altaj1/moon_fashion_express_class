@@ -365,11 +365,11 @@ export class AuthService extends BaseService<User> {
    * Change user password
    */
   async changePassword(
-    email: string,
+    userId: string,
     currentPassword: string,
     newPassword: string,
   ): Promise<{ message: string }> {
-    const user = await this.findOne({ email });
+    const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundError("User not found");
     }
