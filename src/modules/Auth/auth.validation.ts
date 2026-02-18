@@ -3,6 +3,19 @@ import { z } from "zod";
 import { emailSchema } from "@/validation.helper/emailSchema.validation";
 import { roleSchema } from "@/validation.helper/userRole.validation";
 
+// Define allowed modules enum
+const moduleEnum = z.enum([
+  "dashboard",
+  "companyProfile",
+  "users",
+  "buyers",
+  "orders",
+  "accounts",
+  "invoiceTerms",
+  "piManagement",
+  "lcManagement",
+]);
+
 // Password validation with security requirements
 const passwordSchema = z
   .string()
@@ -43,10 +56,27 @@ export const AuthValidation = {
         .trim()
         .optional(),
       role: roleSchema.optional(),
+      designation: z
+        .string()
+        .min(3, "Designation must be at least 3 characters")
+        .max(50, "Designation must not exceed 50 characters")
+        .trim(),
+      modules: z
+        .array(moduleEnum)
+        .min(1, "At least one module must be selected"),
+      // .optional(),
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()
-    .refine((data) => data.password === data.confirmPassword, {
+    .refine((data) => {
+      if (data.password && data.confirmPassword) {
+        return data.password === data.confirmPassword;
+      }
+      if (data.password && !data.confirmPassword) {
+        return false;
+      }
+      return true;
+    }, {
       message: "Passwords do not match",
       path: ["confirmPassword"],
     })
@@ -81,13 +111,12 @@ export const AuthValidation = {
   // Change password validation
   changePassword: z
     .object({
-      email: emailSchema,
       currentPassword: z.string().min(1, "Current password is required"),
       newPassword: passwordSchema,
-      confirmNewPassword: z.string(),
+      confirmNewPassword: z.string().optional(),
     })
     .strict()
-    .refine((data) => data.newPassword === data.confirmNewPassword, {
+    .refine((data) => !data.confirmNewPassword || data.newPassword === data.confirmNewPassword, {
       message: "New passwords do not match",
       path: ["confirmNewPassword"],
     })

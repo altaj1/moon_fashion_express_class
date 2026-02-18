@@ -26,6 +26,7 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     orderBy?: any,
     include?: any,
   ) {
+    console.log({ filters });
     return super.findMany(filters, pagination, orderBy, include);
   }
 
@@ -45,15 +46,14 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    if (!avatarFile?.path) {
-      throw new Error("Avatar file is missing");
-    }
 
-    const uploadedAvatarUrl = await sendImageToCloudinary(
-      `${data.firstName}_${data.lastName}`,
-      avatarFile?.path,
-      "user_avatars",
-    );
+    const uploadedAvatarUrl = avatarFile?.path
+      ? await sendImageToCloudinary(
+          `${data.firstName}_${data.lastName}`,
+          avatarFile.path,
+          "user_avatars",
+        )
+      : null;
 
     // Calculate display name if names changed
     const firstName = data.firstName ?? user.firstName;
@@ -63,7 +63,9 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     const updatedUser = await this.updateById(userId, {
       firstName: data.firstName,
       lastName: data.lastName,
-      avatarUrl: uploadedAvatarUrl.secure_url || "",
+      ...(uploadedAvatarUrl?.secure_url && {
+        avatarUrl: uploadedAvatarUrl.secure_url,
+      }),
       displayName,
     });
 

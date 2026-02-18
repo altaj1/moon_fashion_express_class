@@ -39,11 +39,24 @@ export class OrderService extends BaseService<
           ? "labelItemData"
           : "cartonItemData";
 
+    // Map nested data and calculate per-item totalAmount
     const nestedData =
-      item[nestedDataKey]?.map((d: any) => ({
-        ...d,
-        totalAmount: d.totalAmount ?? d.TotalAmount ?? 0,
-      })) || [];
+      item[nestedDataKey]?.map((d: any) => {
+        let totalAmount = 0;
+
+        if (itemType === "cartonItem") {
+          totalAmount = Number(d.unitPrice ?? 0) * Number(d.cartonQty ?? 0);
+        } else if (itemType === "fabricItem") {
+          totalAmount = Number(d.unitPrice ?? 0) * Number(d.quantityYds ?? 0);
+        } else if (itemType === "labelItem") {
+          totalAmount = Number(d.unitPrice ?? 0) * Number(d.quantityPcs ?? 0);
+        }
+
+        return {
+          ...d,
+          totalAmount,
+        };
+      }) || [];
 
     let totals = {};
 
@@ -82,7 +95,7 @@ export class OrderService extends BaseService<
         acc.quantityDznTotal += Number(item.quantityDzn ?? 0);
         acc.quantityPcsTotal += Number(item.quantityPcs ?? 0);
         acc.unitPriceTotal += Number(item.unitPrice ?? 0);
-        acc.totalAmount += Number(item.totalAmount ?? item.TotalAmount ?? 0);
+        acc.totalAmount += Number(item.totalAmount ?? item.totalAmount ?? 0);
         return acc;
       },
       {
@@ -102,6 +115,7 @@ export class OrderService extends BaseService<
         acc.totalNetWeight += Number(item.netWeight ?? 0);
         acc.totalGrossWeight += Number(item.grossWeight ?? 0);
         acc.totalUnitPrice += Number(item.unitPrice ?? 0);
+        acc.totalAmount += Number(item.totalAmount);
         return acc;
       },
       {
@@ -109,6 +123,7 @@ export class OrderService extends BaseService<
         totalNetWeight: 0,
         totalGrossWeight: 0,
         totalUnitPrice: 0,
+        totalAmount: 0,
       },
     );
   }
@@ -120,7 +135,7 @@ export class OrderService extends BaseService<
         acc.totalGrossWeight += Number(item.grossWeight ?? 0);
         acc.totalQuantityYds += Number(item.quantityYds ?? 0);
         acc.totalUnitPrice += Number(item.unitPrice ?? 0);
-        acc.totalAmount += Number(item.totalAmount ?? item.TotalAmount ?? 0);
+        acc.totalAmount += Number(item.totalAmount ?? item.totalAmount ?? 0);
         return acc;
       },
       {
@@ -180,7 +195,6 @@ export class OrderService extends BaseService<
         default:
           throw new AppError(400, `Invalid invoice type '${productType}'`);
       }
-      console.log(JSON.stringify(orderItemCreateData, null, 2));
       // Build the payload for Prisma
       const prismaData: Prisma.OrderCreateInput = {
         ...invoiceRest,
@@ -193,7 +207,6 @@ export class OrderService extends BaseService<
           create: [orderItemCreateData],
         },
       };
-      console.log("{ prismaData }", JSON.stringify(prismaData, null, 2));
 
       const result = await prisma.order.create({
         data: prismaData,
@@ -211,14 +224,17 @@ export class OrderService extends BaseService<
   }
 
   public async findMany(query: any = {}, include?: any) {
-    console.log({ query });
-
     const {
       page = 1,
       limit = 10,
       search,
       sortBy = "createdAt",
       sortOrder = "desc",
+      status,
+      productType,
+      isDeleted,
+      isInvoice,
+      isLc,
       ...restFilters
     } = query;
     // Build search filters
@@ -231,7 +247,28 @@ export class OrderService extends BaseService<
         // Add more searchable fields if needed
       ];
     }
+    // Status filter
+    if (status) {
+      filters.status = status;
+    }
 
+    if (typeof isDeleted === "boolean") {
+      filters.isDeleted = isDeleted;
+    }
+
+    // ProductType filter
+    if (productType) {
+      filters.productType = productType;
+    }
+    // isInvoice
+    if (typeof isInvoice === "boolean") {
+      filters.isInvoice = isInvoice;
+    }
+
+    // isLc
+    if (typeof isLc === "boolean") {
+      filters.isLc = isLc;
+    }
     const skip = (page - 1) * limit;
 
     const total = await this.prisma.order.count({ where: filters });
@@ -249,6 +286,11 @@ export class OrderService extends BaseService<
         user: true,
         // invoiceTerms: true,
         companyProfile: true,
+        invoices: {
+          include: {
+            lcManagement: true,
+          },
+        },
         orderItems: {
           include: {
             fabricItem: {
@@ -288,6 +330,11 @@ export class OrderService extends BaseService<
       user: true,
       // invoiceTerms: true,
       companyProfile: true,
+      invoices: {
+        include: {
+          lcManagement: true,
+        },
+      },
       orderItems: {
         include: {
           fabricItem: {

@@ -70,7 +70,10 @@ export const InvoiceValidation = {
         const num = stringToNumber(val) || 10;
         return Math.min(Math.max(num, 1), 100);
       }, z.number().int().min(1).max(100).default(10)),
-
+      status: z.enum(["DRAFT", "SENT", "APPROVED", "CANCELLED"]).optional(),
+      productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
       search: z.string().optional(),
 
       sortBy: z
@@ -78,6 +81,11 @@ export const InvoiceValidation = {
         .default("createdAt"),
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
     }),
 
     search: z

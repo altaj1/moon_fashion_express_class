@@ -14,7 +14,6 @@ export class InvoiceController extends BaseController {
   public create = async (req: Request, res: Response) => {
     const body = req.validatedBody;
     this.logAction("create", req, { body });
-    console.log("controller user id", req.userId);
     const result = await this.service.create(body, req.userId);
 
     return this.sendCreatedResponse(
@@ -41,6 +40,7 @@ export class InvoiceController extends BaseController {
       endDate,
       sortBy = "createdAt",
       sortOrder = "desc",
+      productType,
     } = query;
 
     // Build filters
@@ -48,7 +48,7 @@ export class InvoiceController extends BaseController {
 
     // Handle search safely
     if (search) {
-      const enumValues = ["DRAFT", "SENT", "APPROVED", "CANCELLED"]; // your enum
+      const enumValues = ["DRAFT", "SENT", "APPROVED", "CANCELLED"];
       const searchEnum = enumValues.find((val) => val === search.toUpperCase());
 
       filters.OR = [
@@ -61,7 +61,11 @@ export class InvoiceController extends BaseController {
     if (status) {
       filters.status = status;
     }
-
+    if (productType) {
+      filters.order = {
+        productType: productType,
+      };
+    }
     // Date filters
     if (startDate || endDate) {
       filters.date = {};
@@ -109,7 +113,6 @@ export class InvoiceController extends BaseController {
     this.logAction("getOne", req, { id });
 
     const result = await this.service.findById(id);
-    console.log({ result });
     if (!result) {
       return this.sendResponse(
         res,

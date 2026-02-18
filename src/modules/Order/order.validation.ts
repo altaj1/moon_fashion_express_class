@@ -9,12 +9,9 @@ export const OrderValidation = {
         .string()
         .min(2, "Order number must be at least 2 characters"),
 
-      orderDate: z
-        .string()
-        .refine((val) => !isNaN(Date.parse(val)), {
-          message: "Invalid order date format",
-        })
-        .optional(),
+      orderDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+        message: "Invalid order date format",
+      }),
 
       remarks: z.string().max(500).optional(),
 
@@ -36,12 +33,9 @@ export const OrderValidation = {
         .optional()
         .default("DRAFT"),
 
-      deliveryDate: z
-        .string()
-        .refine((val) => !isNaN(Date.parse(val)), {
-          message: "Invalid delivery date format",
-        })
-        .optional(),
+      deliveryDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+        message: "Invalid delivery date format",
+      }),
 
       orderItems: z
         .object({
@@ -49,7 +43,7 @@ export const OrderValidation = {
             .object({
               styleNo: z.string(),
               discription: z.string().optional(),
-              width: z.string().optional(),
+              width: z.string(),
               totalNetWeight: z.number().optional(),
               totalGrossWeight: z.number().optional(),
               totalQuantityYds: z.number().optional(),
@@ -197,6 +191,14 @@ export const OrderValidation = {
           "CANCELLED",
         ])
         .optional(),
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
+      isInvoice: z.boolean().optional(),
+      isLc: z.boolean().optional(),
+      productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
       sortBy: z
         .enum(["orderNumber", "orderDate", "createdAt"])
         .default("createdAt"),

@@ -1,25 +1,30 @@
 import dotenv from "dotenv";
 import { de } from "zod/v4/locales";
 
-// Load environment variables
-const result = dotenv.config();
-
-// Handle .env loading errors
-if (result.error) {
-  if (result.error.message.includes("ENOENT")) {
-    if (process.env.NODE_ENV !== "production") {
-      throw new Error(
-        "⚠️  .env file not found. Please create one based on .env.example",
-      );
-    } else {
-      console.warn(
-        "⚠️  .env file not found. Using provided environment variables.",
-      );
-    }
-  } else {
-    throw new Error(`Failed to load .env file: ${result.error.message}`);
-  }
+// Only load .env in non-production
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
 }
+
+// Load environment variables
+// const result = dotenv.config();
+
+// // Handle .env loading errors
+// if (result.error) {
+//   if (result.error.message.includes("ENOENT")) {
+//     if (process.env.NODE_ENV !== "production") {
+//       throw new Error(
+//         "⚠️  .env file not found. Please create one based on .env.example",
+//       );
+//     } else {
+//       console.warn(
+//         "⚠️  .env file not found. Using provided environment variables.",
+//       );
+//     }
+//   } else {
+//     throw new Error(`Failed to load .env file: ${result.error.message}`);
+//   }
+// }
 
 // Validate and parse configuration
 export const config = {

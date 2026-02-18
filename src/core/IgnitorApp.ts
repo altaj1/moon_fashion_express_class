@@ -47,17 +47,36 @@ export class IgnitorApp {
       }),
     );
 
-    // CORS
     this.app.use(
       cors({
-        origin: ["http://localhost:3000", "http://localhost:5173"],
+        origin: (origin, callback) => {
+          // Allow requests with no origin (like mobile apps or curl)
+          if (!origin) return callback(null, true);
+
+          const allowedOrigins = config.security.cors.allowedOrigins;
+          const isAllowed =
+            allowedOrigins.includes("*") || allowedOrigins.includes(origin);
+
+          if (isAllowed) {
+            callback(null, true);
+          } else {
+            // AppLogger.warn([CORS] Rejected origin: ${origin}. Allowed: ${allowedOrigins.join(", ")});
+            callback(new Error("Not allowed by CORS"));
+          }
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Requested-With",
+          "Accept",
+          "Origin",
+        ],
         credentials: true,
-        // optionsSuccessStatus: 200,
+        optionsSuccessStatus: 200,
       }),
     );
-    console.log("cors:", config.security.cors.allowedOrigins);
-    AppLogger.debug(`CORS enabled for ${config.security.cors.allowedOrigins}`);
-    // Cookie parser
+    // AppLogger.info(CORS configured for origins: ${config.security.cors.allowedOrigins.join(", ")});
     this.app.use(cookieParser());
 
     // Request parsing with size limits and error handling

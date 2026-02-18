@@ -6,6 +6,7 @@ import { asyncHandler } from "@/middleware/asyncHandler";
 import { authenticate, authorize } from "@/middleware/auth";
 import { AuthValidation } from "./auth.validation";
 import { upload } from "@/utils/sendImageToCloudinery";
+import { parseModules } from "@/middleware/parseModules";
 
 export class AuthRoutes {
   private router: Router;
@@ -24,6 +25,7 @@ export class AuthRoutes {
     this.router.post(
       "/register",
       upload.single("avatar"),
+      parseModules,
       validateRequest({
         body: AuthValidation.register,
       }),
@@ -139,7 +141,7 @@ export class AuthRoutes {
     );
 
     // Change password
-    this.router.post(
+    this.router.put(
       "/change-password",
       authenticate,
       validateRequest({
@@ -153,14 +155,14 @@ export class AuthRoutes {
     // Admin only routes
 
     // Get all users (admin only)
-    this.router.get(
-      "/users",
-      authenticate,
-      authorize("admin"),
-      asyncHandler((req: Request, res: Response) =>
-        this.authController.getUsers(req, res),
-      ),
-    );
+    // this.router.get(
+    //   "/users",
+    //   authenticate,
+    //   authorize("admin"),
+    //   asyncHandler((req: Request, res: Response) =>
+    //     this.authController.getUsers(req, res),
+    //   ),
+    // );
 
     // Update user role (admin only)
     this.router.put(

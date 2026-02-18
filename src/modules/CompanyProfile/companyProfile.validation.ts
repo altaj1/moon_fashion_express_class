@@ -13,8 +13,8 @@ export const CompanyProfileValidation = {
         .min(2, "Name must be at least 2 characters")
         .max(100, "Name must be at most 100 characters"),
 
-      address: z.string().max(255).optional(),
-      phone: z.string().max(20).optional(),
+      address: z.string().max(255),
+      phone: z.string().max(20),
       email: z.string().email("Invalid email format").optional(),
       website: z.string().url("Invalid website URL").optional(),
       logoUrl: z.string().url("Invalid logo URL").optional(),
@@ -117,6 +117,11 @@ export const CompanyProfileValidation = {
       sortBy: z.enum(["name", "createdAt", "updatedAt"]).default("createdAt"),
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
     }),
 
     // Search companies
