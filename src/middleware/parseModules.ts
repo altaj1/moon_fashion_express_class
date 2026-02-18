@@ -6,6 +6,7 @@ export const parseModules = (
   res: Response,
   next: NextFunction,
 ) => {
+  console.log(typeof req.body.modules);
   if (req.body.modules) {
     try {
       // If modules comes as a JSON string: '["finance","order"]'
@@ -14,7 +15,9 @@ export const parseModules = (
       }
       // If modules comes as comma separated: 'finance,order'
       if (typeof req.body.modules === "string") {
-        req.body.modules = req.body.modules.split(",").map((m) => m.trim());
+        req.body.modules = req.body.modules
+          .split(",")
+          .map((m: string) => m.trim());
       }
     } catch (err) {
       return res.status(400).json({

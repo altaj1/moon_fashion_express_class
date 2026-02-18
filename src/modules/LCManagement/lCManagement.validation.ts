@@ -12,8 +12,7 @@ export const LCManagementValidation = {
       dateOfOpening: z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: "Invalid date of opening format",
       }),
-      userId: z.string().uuid("Invalid user ID").optional(),
-      user: z.string().uuid("Invalid user ID").optional(),
+
       notifyParty: z.string().max(255).optional(),
 
       lcIssueBankName: z.string().min(2, "LC issue bank name is required"),
@@ -21,6 +20,18 @@ export const LCManagementValidation = {
       lcIssueBankBranch: z.string().min(2, "LC issue bank branch is required"),
 
       destination: z.string().max(255).optional(),
+
+      exportLcNo: z.string().min(2, "Export LC No is required"),
+
+      binNo: z.string().min(2, "BIN No is required"),
+
+      hsCodeNo: z.string().min(2, "HS Code No is required"),
+
+      remarks: z.string().min(1, "Remarks is required"),
+
+      carrier: z.string().min(1, "Carrier is required"),
+
+      salseTerm: z.string().min(1, "Sales term is required"),
 
       issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: "Invalid issue date format",
@@ -34,6 +45,18 @@ export const LCManagementValidation = {
         (val) => stringToNumber(val),
         z.number().positive("Amount must be greater than 0"),
       ),
+
+      challanNo: z.string().min(1, "Challan No is required"),
+
+      transportMoode: z.string().min(1, "Transport mode is required"),
+
+      vehicleNo: z.string().min(1, "Vehicle No is required"),
+
+      driverName: z.string().min(1, "Driver name is required"),
+
+      contactNo: z.string().min(5, "Contact No is required"),
+
+      // userId: z.string().uuid("Invalid user ID"),
 
       invoiceId: z.string().uuid("Invalid invoice ID"),
     })
@@ -59,6 +82,18 @@ export const LCManagementValidation = {
 
       destination: z.string().max(255).optional(),
 
+      exportLcNo: z.string().min(2).optional(),
+
+      binNo: z.string().min(2).optional(),
+
+      hsCodeNo: z.string().min(2).optional(),
+
+      remarks: z.string().optional(),
+
+      carrier: z.string().optional(),
+
+      salseTerm: z.string().optional(),
+
       issueDate: z
         .string()
         .refine((val) => !isNaN(Date.parse(val)), {
@@ -76,6 +111,16 @@ export const LCManagementValidation = {
       amount: z
         .preprocess((val) => stringToNumber(val), z.number().positive())
         .optional(),
+
+      challanNo: z.string().optional(),
+
+      transportMoode: z.string().optional(),
+
+      vehicleNo: z.string().optional(),
+
+      driverName: z.string().optional(),
+
+      contactNo: z.string().optional(),
     })
     .strict(),
 
@@ -107,10 +152,15 @@ export const LCManagementValidation = {
           "dateOfOpening",
           "issueDate",
           "expiryDate",
+          "exportLcNo",
           "createdAt",
         ])
         .default("createdAt"),
-
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
     }),
   },

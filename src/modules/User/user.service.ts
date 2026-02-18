@@ -26,6 +26,7 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     orderBy?: any,
     include?: any,
   ) {
+    console.log({ filters });
     return super.findMany(filters, pagination, orderBy, include);
   }
 

@@ -5,13 +5,15 @@ import { roleSchema } from "@/validation.helper/userRole.validation";
 
 // Define allowed modules enum
 const moduleEnum = z.enum([
-  "finance",
-  "account",
-  "order",
-  "buyer",
+  "dashboard",
+  "companyProfile",
+  "users",
+  "buyers",
+  "orders",
+  "accounts",
+  "invoiceTerms",
+  "piManagement",
   "lcManagement",
-  "inventory",
-  "reports",
 ]);
 
 // Password validation with security requirements
@@ -61,8 +63,8 @@ export const AuthValidation = {
         .trim(),
       modules: z
         .array(moduleEnum)
-        .min(1, "At least one module must be selected")
-        .optional(),
+        .min(1, "At least one module must be selected"),
+      // .optional(),
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()

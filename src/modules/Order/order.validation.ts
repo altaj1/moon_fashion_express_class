@@ -191,7 +191,11 @@ export const OrderValidation = {
           "CANCELLED",
         ])
         .optional(),
-      isDeleted: z.boolean().optional(),
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
       isInvoice: z.boolean().optional(),
       isLc: z.boolean().optional(),
       productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),

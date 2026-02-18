@@ -155,14 +155,14 @@ export class AuthRoutes {
     // Admin only routes
 
     // Get all users (admin only)
-    this.router.get(
-      "/users",
-      authenticate,
-      authorize("admin"),
-      asyncHandler((req: Request, res: Response) =>
-        this.authController.getUsers(req, res),
-      ),
-    );
+    // this.router.get(
+    //   "/users",
+    //   authenticate,
+    //   authorize("admin"),
+    //   asyncHandler((req: Request, res: Response) =>
+    //     this.authController.getUsers(req, res),
+    //   ),
+    // );
 
     // Update user role (admin only)
     this.router.put(

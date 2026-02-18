@@ -38,9 +38,7 @@ export class CompanyProfileController extends BaseController {
       status,
     } = query;
 
-    const filters: any = {
-      isDeleted: false,
-    };
+    const filters: any = {};
 
     // 🔍 Search logic
     if (search) {
@@ -154,7 +152,7 @@ export class CompanyProfileController extends BaseController {
 
     await this.service.softDelete({
       id,
-      isDeleted: body?.isDeleted ?? true,
+      isDeleted: body?.isDeleted,
     });
 
     return this.sendResponse(

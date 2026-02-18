@@ -117,6 +117,11 @@ export const CompanyProfileValidation = {
       sortBy: z.enum(["name", "createdAt", "updatedAt"]).default("createdAt"),
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      isDeleted: z.preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return false;
+      }, z.boolean().default(false)),
     }),
 
     // Search companies

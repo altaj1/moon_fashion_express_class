@@ -15,9 +15,8 @@ export class UserController extends BaseController {
   public getAll = async (req: Request, res: Response) => {
     const query = req.validatedQuery;
     const pagination = this.extractPaginationParams(req);
-
-    const { sortBy, sortOrder, search } = query;
-    const filters: any = {};
+    const { sortBy, sortOrder, search, isDeleted } = query;
+    const filters: any = { isDeleted };
 
     if (search) {
       filters.OR = [

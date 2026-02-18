@@ -192,28 +192,28 @@ export class AuthController extends BaseController {
    * Update user (admin only)
    * PUT /api/auth/update-profile
    */
-  public updateProfile = async (req: Request, res: Response) => {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      return this.sendResponse(
-        res,
-        "User not authenticated",
-        HTTPStatusCode.UNAUTHORIZED,
-      );
-    }
+  // public updateProfile = async (req: Request, res: Response) => {
+  //   const userId = this.getUserId(req);
+  //   if (!userId) {
+  //     return this.sendResponse(
+  //       res,
+  //       "User not authenticated",
+  //       HTTPStatusCode.UNAUTHORIZED,
+  //     );
+  //   }
 
-    const body = req.validatedBody || req.body;
-    this.logAction("updateUser", req, { userId });
+  //   const body = req.validatedBody || req.body;
+  //   this.logAction("updateUser", req, { userId });
 
-    const updatedUser = await this.authService.updateProfile(userId, body);
+  //   const updatedUser = await this.authService.updateProfile(userId, body);
 
-    return this.sendResponse(
-      res,
-      "User profile updated successfully",
-      HTTPStatusCode.OK,
-      updatedUser,
-    );
-  };
+  //   return this.sendResponse(
+  //     res,
+  //     "User profile updated successfully",
+  //     HTTPStatusCode.OK,
+  //     updatedUser,
+  //   );
+  // };
 
   /**
    * Update user role (admin only)
@@ -279,27 +279,27 @@ export class AuthController extends BaseController {
    * Get all users (admin only) - Updated to use BaseService pagination
    * GET /api/auth/users
    */
-  public getUsers = async (req: Request, res: Response) => {
-    const pagination = this.extractPaginationParams(req);
-    this.logAction("getUsers", req, { pagination });
+  // public getUsers = async (req: Request, res: Response) => {
+  //   const pagination = this.extractPaginationParams(req);
+  //   this.logAction("getUsers", req, { pagination });
 
-    // Use the AuthService method that leverages BaseService pagination
-    const result = await this.authService.getUsers(pagination);
+  //   // Use the AuthService method that leverages BaseService pagination
+  //   const result = await this.authService.getUsers(pagination);
 
-    return this.sendPaginatedResponse(
-      res,
-      {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-        hasNext: result.hasNext,
-        hasPrevious: result.hasPrevious,
-      },
-      "Users retrieved successfully",
-      result.data,
-    );
-  };
+  //   return this.sendPaginatedResponse(
+  //     res,
+  //     {
+  //       page: result.page,
+  //       limit: result.limit,
+  //       total: result.total,
+  //       totalPages: result.totalPages,
+  //       hasNext: result.hasNext,
+  //       hasPrevious: result.hasPrevious,
+  //     },
+  //     "Users retrieved successfully",
+  //     result.data,
+  //   );
+  // };
 
   /**
    * Get user statistics (admin only) - Updated to use AuthService method
