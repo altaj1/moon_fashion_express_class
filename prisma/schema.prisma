@@ -404,11 +404,17 @@ model LCManagement {
   lcIssueBankName  String
   lcIssueBankBranch String
   destination      String?
-  
+
   exportLcNo       String
   binNo             String
   hsCodeNo         String
-  remarks          String
+  remarks          String?
+  billOfExchangeRemarkClient String?
+  billOfExchangeDateClient DateTime?
+  billOfExchangeLocationClient String?
+  billOfExchangeRemarkBank String?
+  billOfExchangeDateBank DateTime?
+  billOfExchangeLocationBank String?
   carrier          String
   salesTerm        String
   issueDate  DateTime
@@ -446,7 +452,6 @@ enum AccountType {
 enum EntryType {
   DEBIT
   CREDIT
-  a
 }
 
 enum LedgerType {
