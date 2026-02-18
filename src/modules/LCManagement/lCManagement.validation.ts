@@ -28,7 +28,9 @@ export const LCManagementValidation = {
       hsCodeNo: z.string().min(2, "HS Code No is required"),
 
       remarks: z.string().min(1, "Remarks is required"),
-
+      BillOfExchangeRemarks: z
+        .string()
+        .min(1, "Bill of exchange remarks is required"),
       carrier: z.string().min(1, "Carrier is required"),
 
       issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -59,6 +61,26 @@ export const LCManagementValidation = {
       userId: z.string().uuid("Invalid user ID").optional(),
       salesTerm: z.string().min(1, "Sales term is required"),
       invoiceId: z.string().uuid("Invalid invoice ID"),
+      billOfExchangeRemarkClient: z
+        .string()
+        .min(1, "Bill of exchange remark is required"),
+      billOfExchangeDateClient: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Invalid export LC date format",
+        }),
+      billOfExchangeLocationClient: z
+        .string()
+        .min(1, "Bill of exchange remark"),
+      billOfExchangeRemarkBank: z.string().min(1, "Bill of exchange remark"),
+      billOfExchangeDateBank: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Invalid export LC date format",
+        }),
+      billOfExchangeLocationBank: z.string().min(1, "Bill of exchange remark"),
+      isDeleted: z.boolean().optional(),
+      deletedAt: z.date().nullable().optional(),
     })
     .strict(),
 
