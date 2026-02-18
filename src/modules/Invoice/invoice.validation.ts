@@ -72,8 +72,8 @@ export const InvoiceValidation = {
       }, z.number().int().min(1).max(100).default(10)),
       status: z.enum(["DRAFT", "SENT", "APPROVED", "CANCELLED"]).optional(),
       productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
-      dateFrom: z.string().optional(),
-      dateTo: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
       search: z.string().optional(),
 
       sortBy: z

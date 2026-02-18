@@ -10,8 +10,8 @@
   - Added the required column `exportLcNo` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
   - Added the required column `hsCodeNo` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
   - Added the required column `remarks` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `salseTerm` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `transportMoode` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `selesTerm` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `transportMode` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
   - Added the required column `vehicleNo` to the `lc_managements` table without a default value. This is not possible if the table is not empty.
 
 */
@@ -37,6 +37,6 @@ ADD COLUMN     "exportLcNo" TEXT NOT NULL,
 ADD COLUMN     "hsCodeNo" TEXT NOT NULL,
 ADD COLUMN     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "remarks" TEXT NOT NULL,
-ADD COLUMN     "salseTerm" TEXT NOT NULL,
-ADD COLUMN     "transportMoode" TEXT NOT NULL,
+ADD COLUMN     "selesTerm" TEXT NOT NULL,
+ADD COLUMN     "transportMode" TEXT NOT NULL,
 ADD COLUMN     "vehicleNo" TEXT NOT NULL;

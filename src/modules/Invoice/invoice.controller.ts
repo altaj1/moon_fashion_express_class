@@ -40,6 +40,7 @@ export class InvoiceController extends BaseController {
       endDate,
       sortBy = "createdAt",
       sortOrder = "desc",
+      productType,
     } = query;
 
     // Build filters
@@ -47,7 +48,7 @@ export class InvoiceController extends BaseController {
 
     // Handle search safely
     if (search) {
-      const enumValues = ["DRAFT", "SENT", "APPROVED", "CANCELLED"]; // your enum
+      const enumValues = ["DRAFT", "SENT", "APPROVED", "CANCELLED"];
       const searchEnum = enumValues.find((val) => val === search.toUpperCase());
 
       filters.OR = [
@@ -60,7 +61,11 @@ export class InvoiceController extends BaseController {
     if (status) {
       filters.status = status;
     }
-
+    if (productType) {
+      filters.order = {
+        productType: productType,
+      };
+    }
     // Date filters
     if (startDate || endDate) {
       filters.date = {};

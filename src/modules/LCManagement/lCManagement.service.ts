@@ -57,7 +57,7 @@ export class LCManagementService extends BaseService<
     });
 
     return super.create({
-      userId,
+      // userId,
       ...data,
     });
   }

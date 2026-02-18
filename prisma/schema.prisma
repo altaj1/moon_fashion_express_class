@@ -410,16 +410,16 @@ model LCManagement {
   hsCodeNo         String
   remarks          String
   carrier          String
-  salseTerm        String
+  salesTerm        String
   issueDate  DateTime
   expiryDate DateTime
   amount     Decimal
   challanNo String
-  transportMoode   String
+  transportMode   String
   vehicleNo  String
   driverName String
   contactNo  String
-
+  exportLcDate DateTime?
   userId String @db.Uuid
   user   User? @relation(fields: [userId], references: [id])
 
