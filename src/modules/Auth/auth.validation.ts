@@ -163,7 +163,6 @@ export const AuthValidation = {
     .object({
       email: emailSchema,
       newPassword: passwordSchema,
-      currentPassword: z.string().min(1, "Current password is required"),
     })
     .strict(),
 

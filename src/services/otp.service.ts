@@ -1,7 +1,7 @@
 // src/modules/OTP/otp.service.ts
 import crypto from 'crypto';
 import { AppLogger } from '@/core/logging/logger';
-import { SESEmailService } from '@/services/SESEmailService';
+import { NodemailerEmailService } from './NodemailerEmailService';
 import { BadRequestError } from '@/core/errors/AppError';
 import cron from 'node-cron';
 import { PrismaClient } from '@/generated/prisma/client';
@@ -54,11 +54,11 @@ export class OTPService {
     private readonly RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
 
     private prisma: PrismaClient;
-    private emailService: SESEmailService;
+    private emailService: NodemailerEmailService;
 
-    constructor(prisma: PrismaClient, emailService: SESEmailService) {
+    constructor(prisma: PrismaClient) {
         this.prisma = prisma;
-        this.emailService = emailService;
+        this.emailService = new NodemailerEmailService();
         this.setupCleanupJob();
     }
 
@@ -286,11 +286,10 @@ export class OTPService {
                 (recentOTP.createdAt.getTime() +
                     this.RESEND_COOLDOWN_MINUTES * 60 * 1000 -
                     Date.now()) /
-                    60000
+                60000
             );
             throw new BadRequestError(
-                `Please wait ${waitTime} minute${
-                    waitTime > 1 ? 's' : ''
+                `Please wait ${waitTime} minute${waitTime > 1 ? 's' : ''
                 } before requesting a new OTP.`
             );
         }

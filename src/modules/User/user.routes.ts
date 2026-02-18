@@ -3,8 +3,9 @@ import { UserController } from "./user.controller";
 import { UserValidation } from "./user.validation";
 import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
-import { authenticate } from "@/middleware/auth";
+import { authenticate, authorize } from "@/middleware/auth";
 import { upload } from "@/utils/sendImageToCloudinery";
+import { parseModules } from "@/middleware/parseModules";
 
 export class UserRoutes {
   private router: Router;
@@ -59,14 +60,29 @@ export class UserRoutes {
     this.router.patch(
       "/update-profile",
       upload.single("avatar"),
+      parseModules,
       authenticate,
       updateValidator,
       asyncHandler((req, res) => this.controller.updateProfile(req, res)),
     );
 
-    // Delete
+    // Update User (Admin only likely, but route itself is here)
+    this.router.patch(
+      "/:id",
+      upload.single("avatar"),
+      parseModules,
+      authenticate,
+      authorize("admin"), // User update should be admin only
+      idValidator,
+      updateValidator,
+      asyncHandler((req, res) => this.controller.update(req, res)),
+    );
+
+    // Delete (Soft Delete)
     this.router.put(
       "/:id",
+      authenticate,
+      authorize("admin"),
       idValidator,
       asyncHandler((req, res) => this.controller.softDelete(req, res)),
     );

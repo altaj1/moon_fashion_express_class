@@ -133,7 +133,30 @@ export class UserController extends BaseController {
       return this.sendResponse(res, "User not found", HTTPStatusCode.NOT_FOUND);
     }
 
-    const result = await this.service.updateProfile(id, body, avatarFile);
+    const result = await this.service.updateUser(id!, body, avatarFile);
+
+    return this.sendResponse(
+      res,
+      "User updated successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  };
+
+  /**
+   * Update any User (Admin only)
+   */
+  public update = async (req: Request, res: Response) => {
+    const { id } = req.validatedParams;
+    const body = req.validatedBody;
+    const avatarFile = req.file;
+
+    const exists = await this.service.exists({ id });
+    if (!exists) {
+      return this.sendResponse(res, "User not found", HTTPStatusCode.NOT_FOUND);
+    }
+
+    const result = await this.service.updateUser(id, body, avatarFile);
 
     return this.sendResponse(
       res,

@@ -7,7 +7,6 @@ import { User } from "@/generated/prisma/client";
 import { NotFoundError } from "@/core/errors/AppError";
 import { AppLogger } from "@/core/logging/logger";
 import { UserAccountStatus } from "@/generated/prisma/client";
-import { fi } from "zod/v4/locales";
 export class UserService extends BaseService<any, UpdateUserInput> {
   constructor(prisma: PrismaClient) {
     super(prisma, "User", {
@@ -34,7 +33,7 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     return super.findById(id, include);
   }
 
-  async updateProfile(
+  async updateUser(
     userId: string | undefined,
     data: UpdateUserInput,
     avatarFile?: Express.Multer.File,
@@ -47,29 +46,36 @@ export class UserService extends BaseService<any, UpdateUserInput> {
       throw new NotFoundError("User not found");
     }
 
-    const uploadedAvatarUrl = avatarFile?.path
-      ? await sendImageToCloudinary(
-          `${data.firstName}_${data.lastName}`,
-          avatarFile.path,
-          "user_avatars",
-        )
-      : null;
+    let avatarUrl = undefined;
+    if (avatarFile?.path) {
+      const uploadedAvatarUrl = await sendImageToCloudinary(
+        `${data.firstName || user.firstName}_${data.lastName || user.lastName}`,
+        avatarFile.path,
+        "user_avatars",
+      );
+      avatarUrl = uploadedAvatarUrl.secure_url;
+    }
+
+    const updateData: any = {};
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.username !== undefined) updateData.username = data.username;
+    if (data.designation !== undefined) updateData.designation = data.designation;
+    if (data.role !== undefined) updateData.role = data.role;
+    if (data.modules !== undefined) updateData.modules = data.modules;
+    if (avatarUrl) updateData.avatarUrl = avatarUrl;
 
     // Calculate display name if names changed
-    const firstName = data.firstName ?? user.firstName;
-    const lastName = data.lastName ?? user.lastName;
-    const displayName = `${firstName} ${lastName}`;
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const firstName = data.firstName ?? user.firstName;
+      const lastName = data.lastName ?? user.lastName;
+      updateData.displayName = `${firstName} ${lastName}`;
+    }
 
-    const updatedUser = await this.updateById(userId, {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      ...(uploadedAvatarUrl?.secure_url && {
-        avatarUrl: uploadedAvatarUrl.secure_url,
-      }),
-      displayName,
-    });
+    const updatedUser = await this.updateById(userId, updateData);
 
-    AppLogger.info("User profile updated", { userId });
+    AppLogger.info("User updated", { userId });
 
     const { password, ...userWithoutPassword } = updatedUser;
     return userWithoutPassword;
