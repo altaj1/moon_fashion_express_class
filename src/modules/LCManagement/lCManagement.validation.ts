@@ -94,7 +94,7 @@ export const LCManagementValidation = {
 
       carrier: z.string().optional(),
 
-      selesTerm: z.string().optional(),
+      salesTerm: z.string().optional(),
 
       issueDate: z
         .string()

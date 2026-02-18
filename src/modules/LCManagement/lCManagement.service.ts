@@ -55,9 +55,12 @@ export class LCManagementService extends BaseService<
         isLc: true,
       },
     });
-
+    console.log({
+      userId,
+      ...data,
+    });
     return super.create({
-      // userId,
+      userId,
       ...data,
     });
   }
