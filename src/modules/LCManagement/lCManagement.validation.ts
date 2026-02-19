@@ -28,9 +28,7 @@ export const LCManagementValidation = {
       hsCodeNo: z.string().min(2, "HS Code No is required"),
 
       remarks: z.string().min(1, "Remarks is required"),
-      BillOfExchangeRemarks: z
-        .string()
-        .min(1, "Bill of exchange remarks is required"),
+
       carrier: z.string().min(1, "Carrier is required"),
 
       issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -106,6 +104,13 @@ export const LCManagementValidation = {
 
       exportLcNo: z.string().min(2).optional(),
 
+      exportLcDate: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Invalid export LC date format",
+        })
+        .optional(),
+
       binNo: z.string().min(2).optional(),
 
       hsCodeNo: z.string().min(2).optional(),
@@ -142,7 +147,36 @@ export const LCManagementValidation = {
 
       driverName: z.string().optional(),
 
-      contactNo: z.string().optional(),
+      contactNo: z.string().min(5).optional(),
+
+      invoiceId: z.string().uuid("Invalid invoice ID").optional(),
+
+      // ===== Bill of Exchange (Client) =====
+      billOfExchangeRemarkClient: z.string().optional(),
+
+      billOfExchangeDateClient: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Invalid bill of exchange client date format",
+        })
+        .optional(),
+
+      billOfExchangeLocationClient: z.string().optional(),
+
+      // ===== Bill of Exchange (Bank) =====
+      billOfExchangeRemarkBank: z.string().optional(),
+
+      billOfExchangeDateBank: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Invalid bill of exchange bank date format",
+        })
+        .optional(),
+
+      billOfExchangeLocationBank: z.string().optional(),
+
+      isDeleted: z.boolean().optional(),
+      deletedAt: z.date().nullable().optional(),
     })
     .strict(),
 
