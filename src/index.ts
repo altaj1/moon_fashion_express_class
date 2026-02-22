@@ -11,6 +11,8 @@ import { CompanyProfileModule } from "./modules/CompanyProfile/CompanyProfileMod
 import { OrderModule } from "./modules/Order/OrderModule";
 import { LCManagementModule } from "./modules/LCManagement/LCManagementModule";
 import { SupplierModule } from "./modules/Supplier/SupplierModule";
+import { JournalEntryModule } from "./modules/JournalEntry/JournalEntryModule";
+import { AccountHeadModule } from "./modules/AccountHead/AccountHeadModule";
 // Main application bootstrap function
 async function bootstrap() {
   try {
@@ -31,6 +33,8 @@ async function bootstrap() {
     app.registerModule(new OrderModule());
     app.registerModule(new LCManagementModule());
     app.registerModule(new SupplierModule());
+    app.registerModule(new JournalEntryModule());
+    app.registerModule(new AccountHeadModule());
     AppLogger.info("✔ All modules registered successfully");
 
     // Start the server

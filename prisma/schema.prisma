@@ -63,6 +63,7 @@ model User {
   orders            Order[] 
   lcManagement      LCManagement[]
   suppliers Supplier[]
+  journalEntries    JournalEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -395,6 +396,9 @@ model CompanyProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   orders Order[]
+  accountHeads AccountHead[]
+  journalEntries JournalEntry[]
+  loans Loan[]
 }
 
 // ========================= LCManagement================
@@ -452,6 +456,8 @@ model Supplier {
   userId String @db.Uuid
   user   User? @relation(fields: [userId], references: [id])
 
+  journalEntries JournalEntry[]
+  journalLines JournalLine[]
   isDeleted         Boolean @default(false)
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -482,6 +488,10 @@ enum PartyType {
 
 
 enum JournalEntryType {
+   DEBIT
+  CREDIT
+}
+enum JournalEntryCategory {
   CUSTOMER_DUE
   RECEIPT
   SUPPLIER_DUE
@@ -489,7 +499,6 @@ enum JournalEntryType {
   JOURNAL
   CONTRA
 }
-
 enum JournalEntryStatus {
   DRAFT
   POSTED
@@ -501,7 +510,7 @@ model AccountHead {
   code        String?     @unique
   type        AccountType
   description String?
-
+  openingBalance Decimal? @default(0)
   companyProfileId String         @db.Uuid
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
 
@@ -519,6 +528,7 @@ model JournalEntry {
   voucherNo   String             @unique
   date        DateTime
   type        JournalEntryType
+   category JournalEntryCategory
   status      JournalEntryStatus @default(DRAFT)
   narration   String?
 
@@ -562,7 +572,7 @@ model JournalLine {
   accountHeadId  String       @db.Uuid
   accountHead    AccountHead  @relation(fields: [accountHeadId], references: [id])
 
-  type           EntryType
+  type           JournalEntryType
   amount         Decimal
 
   buyerId        String?   @db.Uuid
