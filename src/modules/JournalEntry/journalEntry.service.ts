@@ -28,13 +28,63 @@ export class JournalEntryService extends BaseService<
   }
 
   // =========================================================================
+  // Generate Auto-Voucher Number
+  // =========================================================================
+  private async generateVoucherNo(category: string, date: Date): Promise<string> {
+    const year = date.getFullYear();
+
+    // Map category to a 2-letter prefix
+    const prefixMap: Record<string, string> = {
+      CUSTOMER_DUE: "CD",
+      SUPPLIER_DUE: "SD",
+      RECEIPT: "RV",
+      PAYMENT: "PV",
+      CONTRA: "CV",
+      JOURNAL: "JV"
+    };
+
+    const prefix = prefixMap[category] || "JV";
+
+    // Find the last entry for this category and year
+    const lastEntry = await this.prisma.journalEntry.findFirst({
+      where: {
+        category: category as any,
+        date: {
+          gte: new Date(`${year}-01-01T00:00:00.000Z`),
+          lt: new Date(`${year + 1}-01-01T00:00:00.000Z`)
+        },
+        voucherNo: {
+          startsWith: `${prefix}-${year}-`
+        }
+      },
+      orderBy: {
+        voucherNo: 'desc'
+      }
+    });
+
+    let sequence = 1;
+    if (lastEntry && lastEntry.voucherNo) {
+      // Extract the sequence number from the end (e.g., "PV-2026-0001" -> 1)
+      const parts = lastEntry.voucherNo.split('-');
+      if (parts.length === 3) {
+        sequence = parseInt(parts[2], 10) + 1;
+      }
+    }
+
+    // Format as PR-YYYY-000X
+    return `${prefix}-${year}-${sequence.toString().padStart(4, '0')}`;
+  }
+
+  // =========================================================================
   // Create Journal Entry (DRAFT)
   // =========================================================================
   public async createDraft(data: CreateJournalEntryInput) {
+    const voucherNo = data.voucherNo || await this.generateVoucherNo(data.category, new Date(data.date));
+
     return this.prisma.$transaction(async (tx) => {
       const entry = await tx.journalEntry.create({
         data: {
-          voucherNo: data.voucherNo,
+          voucherNo: voucherNo,
           date: data.date,
           category: data.category,
           narration: data.narration,

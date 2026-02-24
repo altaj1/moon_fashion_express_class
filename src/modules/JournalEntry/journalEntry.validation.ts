@@ -9,7 +9,8 @@ export const JournalEntryValidation = {
     .object({
       voucherNo: z
         .string()
-        .min(2, "Voucher number must be at least 2 characters"),
+        .min(2, "Voucher number must be at least 2 characters")
+        .optional(),
 
       date: z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: "Invalid date format",
