@@ -2,7 +2,9 @@ import { z } from "zod";
 import { stringToNumber } from "@/utils/stringToNumber";
 
 export const JournalEntryValidation = {
-  // ================= CREATE JOURNAL ENTRY =================
+  // =========================
+  // Create Journal Entry
+  // =========================
   create: z
     .object({
       voucherNo: z
@@ -13,12 +15,19 @@ export const JournalEntryValidation = {
         message: "Invalid date format",
       }),
 
-      type: z.enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"]),
+      // ❌ Previously: `type: z.enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"])`
+      //    Those values didn't exist in the Prisma enum. Fixed to use `category` with correct values.
+      category: z.enum([
+        "CUSTOMER_DUE",
+        "RECEIPT",
+        "SUPPLIER_DUE",
+        "PAYMENT",
+        "JOURNAL",
+        "CONTRA",
+      ]),
 
-      status: z
-        .enum(["DRAFT", "POSTED", "CANCELLED"])
-        .optional()
-        .default("DRAFT"),
+      // ❌ Previously: `status: z.enum(["DRAFT", "POSTED", "CANCELLED"]).optional().default("DRAFT")`
+      //    Removed — status is always DRAFT on creation (set by service, not user-controlled).
 
       narration: z.string().max(1000).optional(),
 
@@ -40,32 +49,26 @@ export const JournalEntryValidation = {
 
       createdById: z.string().uuid("Invalid user ID").optional(),
 
+      // ❌ Previously: lines used `{ accountId, debit, credit }` which didn't match Prisma model.
+      //    Fixed to `{ accountHeadId, type, amount }` to match JournalLine schema exactly.
       lines: z
         .array(
           z.object({
-            accountId: z.string().uuid("Invalid account ID"),
-            debit: z
-              .preprocess(
-                (val) => stringToNumber(val),
-                z.number().min(0, "Debit must be positive"),
-              )
-              .optional(),
-
-            credit: z
-              .preprocess(
-                (val) => stringToNumber(val),
-                z.number().min(0, "Credit must be positive"),
-              )
-              .optional(),
-
-            description: z.string().optional(),
+            accountHeadId: z.string().uuid("Invalid account head ID"),
+            type: z.enum(["DEBIT", "CREDIT"]),
+            amount: z.preprocess(
+              (val) => stringToNumber(val),
+              z.number().positive("Amount must be positive"),
+            ),
           }),
         )
         .min(2, "At least two journal lines required"),
     })
     .strict(),
 
-  // ================= UPDATE JOURNAL ENTRY =================
+  // =========================
+  // Update Journal Entry
+  // =========================
   update: z
     .object({
       voucherNo: z.string().min(2).optional(),
@@ -77,11 +80,16 @@ export const JournalEntryValidation = {
         })
         .optional(),
 
-      type: z
-        .enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"])
+      category: z
+        .enum([
+          "CUSTOMER_DUE",
+          "RECEIPT",
+          "SUPPLIER_DUE",
+          "PAYMENT",
+          "JOURNAL",
+          "CONTRA",
+        ])
         .optional(),
-
-      status: z.enum(["DRAFT", "POSTED", "CANCELLED"]).optional(),
 
       narration: z.string().optional(),
 
@@ -104,28 +112,30 @@ export const JournalEntryValidation = {
       lines: z
         .array(
           z.object({
-            accountId: z.string().uuid(),
-            debit: z
-              .preprocess((val) => stringToNumber(val), z.number().min(0))
-              .optional(),
-            credit: z
-              .preprocess((val) => stringToNumber(val), z.number().min(0))
-              .optional(),
-            description: z.string().optional(),
+            accountHeadId: z.string().uuid("Invalid account head ID"),
+            type: z.enum(["DEBIT", "CREDIT"]),
+            amount: z.preprocess(
+              (val) => stringToNumber(val),
+              z.number().positive("Amount must be positive"),
+            ),
           }),
         )
         .optional(),
     })
     .strict(),
 
-  // ================= PARAMS =================
+  // =========================
+  // Params Validation
+  // =========================
   params: {
     id: z.object({
       id: z.string().uuid("Invalid Journal Entry ID"),
     }),
   },
 
-  // ================= QUERY =================
+  // =========================
+  // Query Validations
+  // =========================
   query: {
     list: z.object({
       page: z.preprocess(
@@ -140,11 +150,21 @@ export const JournalEntryValidation = {
 
       search: z.string().optional(),
 
-      type: z
-        .enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"])
+      // ❌ Previously: `type: z.enum(["GENERAL", ...])` — wrong field name + wrong values.
+      //    Fixed to `category` with correct Prisma enum values.
+      category: z
+        .enum([
+          "CUSTOMER_DUE",
+          "RECEIPT",
+          "SUPPLIER_DUE",
+          "PAYMENT",
+          "JOURNAL",
+          "CONTRA",
+        ])
         .optional(),
 
-      status: z.enum(["DRAFT", "POSTED", "CANCELLED"]).optional(),
+      // ❌ Previously included "CANCELLED" — that status doesn't exist in Prisma schema.
+      status: z.enum(["DRAFT", "POSTED"]).optional(),
 
       sortBy: z.enum(["date", "voucherNo", "createdAt"]).default("createdAt"),
 
@@ -153,7 +173,9 @@ export const JournalEntryValidation = {
   },
 };
 
-// ================= TYPES =================
+// =========================
+// Types
+// =========================
 
 export type CreateJournalEntryInput = z.infer<
   typeof JournalEntryValidation.create

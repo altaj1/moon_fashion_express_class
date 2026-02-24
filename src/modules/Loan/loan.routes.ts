@@ -1,15 +1,15 @@
 import { Router, Request, Response } from "express";
-import { JournalEntryController } from "./journalEntry.controller";
-import { JournalEntryValidation } from "./journalEntry.validation";
+import { LoanController } from "./loan.controller";
+import { LoanValidation } from "./loan.validation";
 import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
 import { authenticate } from "@/middleware/auth";
 
-export class JournalEntryRoutes {
+export class LoanRoutes {
     private router: Router;
-    private controller: JournalEntryController;
+    private controller: LoanController;
 
-    constructor(controller: JournalEntryController) {
+    constructor(controller: LoanController) {
         this.router = Router();
         this.controller = controller;
         this.initializeRoutes();
@@ -17,23 +17,28 @@ export class JournalEntryRoutes {
 
     private initializeRoutes(): void {
         const createValidator = validateRequest({
-            body: JournalEntryValidation.create,
+            body: LoanValidation.create,
         });
 
         const updateValidator = validateRequest({
-            params: JournalEntryValidation.params.id,
-            body: JournalEntryValidation.update,
+            params: LoanValidation.params.id,
+            body: LoanValidation.update,
         });
 
         const idValidator = validateRequest({
-            params: JournalEntryValidation.params.id,
+            params: LoanValidation.params.id,
+        });
+
+        const repaymentValidator = validateRequest({
+            params: LoanValidation.params.id,
+            body: LoanValidation.repayment,
         });
 
         // =========================
         // Define Routes
         // =========================
 
-        // Create Journal Entry (always starts as DRAFT)
+        // Create Loan
         this.router.post(
             "/",
             authenticate,
@@ -43,19 +48,19 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Get All Journal Entries (with query validation)
+        // Get All Loans
         this.router.get(
             "/",
             authenticate,
             validateRequest({
-                query: JournalEntryValidation.query.list,
+                query: LoanValidation.query.list,
             }),
             asyncHandler((req: Request, res: Response) =>
                 this.controller.getAll(req, res),
             ),
         );
 
-        // Get Single Journal Entry
+        // Get Single Loan
         this.router.get(
             "/:id",
             authenticate,
@@ -65,7 +70,7 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Update Journal Entry (DRAFT only — controller enforces this)
+        // Update Loan
         this.router.patch(
             "/:id",
             authenticate,
@@ -75,8 +80,8 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Delete Journal Entry (DRAFT only — controller enforces this)
-        this.router.delete(
+        // Soft Delete Loan
+        this.router.put(
             "/:id",
             authenticate,
             idValidator,
@@ -86,26 +91,26 @@ export class JournalEntryRoutes {
         );
 
         // =========================
-        // Accounting Action Routes
+        // Repayment Routes
         // =========================
 
-        // POST a draft entry → validates debit=credit, updates account balances, locks entry
+        // Record Repayment
         this.router.post(
-            "/:id/post",
+            "/:id/repayments",
             authenticate,
-            idValidator,
+            repaymentValidator,
             asyncHandler((req: Request, res: Response) =>
-                this.controller.post(req, res),
+                this.controller.recordRepayment(req, res),
             ),
         );
 
-        // REVERSE a posted entry → creates a counter-entry with flipped debits/credits
-        this.router.post(
-            "/:id/reverse",
+        // Get Repayments for a Loan
+        this.router.get(
+            "/:id/repayments",
             authenticate,
             idValidator,
             asyncHandler((req: Request, res: Response) =>
-                this.controller.reverse(req, res),
+                this.controller.getRepayments(req, res),
             ),
         );
     }

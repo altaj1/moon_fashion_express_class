@@ -1,15 +1,15 @@
 import { Router, Request, Response } from "express";
-import { JournalEntryController } from "./journalEntry.controller";
-import { JournalEntryValidation } from "./journalEntry.validation";
+import { BankController } from "./bank.controller";
+import { BankValidation } from "./bank.validation";
 import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
 import { authenticate } from "@/middleware/auth";
 
-export class JournalEntryRoutes {
+export class BankRoutes {
     private router: Router;
-    private controller: JournalEntryController;
+    private controller: BankController;
 
-    constructor(controller: JournalEntryController) {
+    constructor(controller: BankController) {
         this.router = Router();
         this.controller = controller;
         this.initializeRoutes();
@@ -17,23 +17,23 @@ export class JournalEntryRoutes {
 
     private initializeRoutes(): void {
         const createValidator = validateRequest({
-            body: JournalEntryValidation.create,
+            body: BankValidation.create,
         });
 
         const updateValidator = validateRequest({
-            params: JournalEntryValidation.params.id,
-            body: JournalEntryValidation.update,
+            params: BankValidation.params.id,
+            body: BankValidation.update,
         });
 
         const idValidator = validateRequest({
-            params: JournalEntryValidation.params.id,
+            params: BankValidation.params.id,
         });
 
         // =========================
         // Define Routes
         // =========================
 
-        // Create Journal Entry (always starts as DRAFT)
+        // Create Bank
         this.router.post(
             "/",
             authenticate,
@@ -43,19 +43,19 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Get All Journal Entries (with query validation)
+        // Get All Banks (with query validation)
         this.router.get(
             "/",
             authenticate,
             validateRequest({
-                query: JournalEntryValidation.query.list,
+                query: BankValidation.query.list,
             }),
             asyncHandler((req: Request, res: Response) =>
                 this.controller.getAll(req, res),
             ),
         );
 
-        // Get Single Journal Entry
+        // Get Single Bank
         this.router.get(
             "/:id",
             authenticate,
@@ -65,7 +65,7 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Update Journal Entry (DRAFT only — controller enforces this)
+        // Update Bank
         this.router.patch(
             "/:id",
             authenticate,
@@ -75,37 +75,13 @@ export class JournalEntryRoutes {
             ),
         );
 
-        // Delete Journal Entry (DRAFT only — controller enforces this)
-        this.router.delete(
+        // Soft Delete Bank
+        this.router.put(
             "/:id",
             authenticate,
             idValidator,
             asyncHandler((req: Request, res: Response) =>
                 this.controller.delete(req, res),
-            ),
-        );
-
-        // =========================
-        // Accounting Action Routes
-        // =========================
-
-        // POST a draft entry → validates debit=credit, updates account balances, locks entry
-        this.router.post(
-            "/:id/post",
-            authenticate,
-            idValidator,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.post(req, res),
-            ),
-        );
-
-        // REVERSE a posted entry → creates a counter-entry with flipped debits/credits
-        this.router.post(
-            "/:id/reverse",
-            authenticate,
-            idValidator,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.reverse(req, res),
             ),
         );
     }

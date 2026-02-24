@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"            
-  output   = "../src/generated/prisma"  
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -41,51 +41,49 @@ enum Module {
 }
 
 model User {
-  id                String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String @unique
-  username          String? @unique
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String            @unique
+  username          String?           @unique
   firstName         String
   lastName          String
   displayName       String?
-  role              UserRole @default(user)
+  role              UserRole          @default(user)
   designation       String
   modules           Module[]
   status            UserAccountStatus @default(active)
   password          String
-  isPasswordChanged Boolean @default(false)
+  isPasswordChanged Boolean           @default(false)
   emailVerifiedAt   DateTime?
   avatarUrl         String?
-  isDeleted         Boolean @default(false)
+  isDeleted         Boolean           @default(false)
   lastLoginAt       DateTime?
 
-  otps              OTP[]
-  invoices          Invoice[] 
-  orders            Order[] 
-  lcManagement      LCManagement[]
-  suppliers Supplier[]
-  journalEntries    JournalEntry[]
+  otps           OTP[]
+  invoices       Invoice[]
+  orders         Order[]
+  lcManagement   LCManagement[]
+  suppliers      Supplier[]
+  journalEntries JournalEntry[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([email])
   @@index([username])
 }
 
-
-
 model OTP {
-  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   identifier String
   code       Int
   type       OTPType
   expiresAt  DateTime
-  verified   Boolean @default(false)
-  attempts   Int @default(0)
+  verified   Boolean  @default(false)
+  attempts   Int      @default(0)
 
-  userId     String? @db.Uuid
-  user       User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,27 +96,29 @@ model OTP {
 // ================= BUYER =================
 
 model Buyer {
-  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  email        String @unique
-  merchandiser String
-  phone        String
-  address      String
-  location     String
-  orders       Order[]
-  isDeleted         Boolean @default(false)
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  email          String         @unique
+  merchandiser   String
+  phone          String
+  address        String
+  location       String
+  orders         Order[]
+  isDeleted      Boolean        @default(false)
   journalEntries JournalEntry[]
   journalLines   JournalLine[]
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deletedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
+
 // ================= ORDER =================
 enum ProductType {
   FABRIC
   LABEL_TAG
   CARTON
 }
+
 enum OrderStatus {
   DRAFT
   PENDING
@@ -127,90 +127,87 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
 }
+
 model Order {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderNumber String
-  orderDate DateTime?
-  remarks String?
+  orderDate   DateTime?
+  remarks     String?
   productType ProductType
 
-  buyerId   String @db.Uuid
-  buyer     Buyer? @relation(fields: [buyerId], references: [id])
+  buyerId String @db.Uuid
+  buyer   Buyer? @relation(fields: [buyerId], references: [id])
 
-  userId    String @db.Uuid
-  user      User? @relation(fields: [userId], references: [id])
-  isInvoice Boolean @default(false)
-  invoiceId String? @db.Uuid
-  isLc      Boolean @default(false)
-  lcId      String? @db.Uuid
-  companyProfileId String @db.Uuid
-  companyProfile CompanyProfile @relation(fields: [companyProfileId], references: [id])
-  orderItems OrderItem[]
-  isDeleted         Boolean @default(false)
-  status OrderStatus @default(DRAFT)
+  userId           String         @db.Uuid
+  user             User?          @relation(fields: [userId], references: [id])
+  isInvoice        Boolean        @default(false)
+  invoiceId        String?        @db.Uuid
+  isLc             Boolean        @default(false)
+  lcId             String?        @db.Uuid
+  companyProfileId String         @db.Uuid
+  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id])
+  orderItems       OrderItem[]
+  isDeleted        Boolean        @default(false)
+  status           OrderStatus    @default(DRAFT)
 
-  deletedAt DateTime?
+  deletedAt    DateTime?
   deliveryDate DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  invoices Invoice?
-
+  invoices  Invoice?
 }
 
 model OrderItem {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   fabricId String? @db.Uuid
   labelId  String? @db.Uuid
   cartonId String? @db.Uuid
-  
+
   fabricItem FabricItem? @relation(fields: [fabricId], references: [id], onDelete: SetNull)
   labelItem  LabelItem?  @relation(fields: [labelId], references: [id], onDelete: SetNull)
   cartonItem CartonItem? @relation(fields: [cartonId], references: [id], onDelete: SetNull)
 
-  orderId   String? @db.Uuid
-  order     Order? @relation(fields: [orderId], references: [id])
+  orderId   String?  @db.Uuid
+  order     Order?   @relation(fields: [orderId], references: [id])
   createdAt DateTime @default(now())
 
   @@map("order_items")
 }
 
-
 // ================= FABRIC =================
 
 model FabricItem {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  styleNo    String
-  discription String?
-  width String?
-  totalNetWeight Decimal?
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  styleNo          String
+  discription      String?
+  width            String?
+  totalNetWeight   Decimal?
   totalGrossWeight Decimal?
   totalQuantityYds Decimal?
-  totalUnitPrice Decimal?
-  totalAmount Decimal?
-  fabricItemData FabricItemData[] @relation("FabricItemToFabricItemData")
-  orderItems OrderItem[]
+  totalUnitPrice   Decimal?
+  totalAmount      Decimal?
+  fabricItemData   FabricItemData[] @relation("FabricItemToFabricItemData")
+  orderItems       OrderItem[]
 
   createdAt DateTime @default(now())
 
   @@map("fabric_items")
 }
 
-
 model FabricItemData {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  
-  color String?
-  netWeight Decimal?
+
+  color       String?
+  netWeight   Decimal?
   grossWeight Decimal?
   quantityYds Decimal?
-  unitPrice Decimal?
+  unitPrice   Decimal?
   totalAmount Decimal?
 
-
-  fabricItemId String @db.Uuid
-  fabricItem FabricItem @relation("FabricItemToFabricItemData", fields: [fabricItemId], references: [id], onDelete: Cascade)
+  fabricItemId String     @db.Uuid
+  fabricItem   FabricItem @relation("FabricItemToFabricItemData", fields: [fabricItemId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -220,37 +217,35 @@ model FabricItemData {
 // ================= LABEL =================
 
 model LabelItem {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  styleNo    String 
-  labelItemData LabelItemData[] @relation("LabelItemToLabelItemData")
-  netWeightTotal Decimal?
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  styleNo          String
+  labelItemData    LabelItemData[] @relation("LabelItemToLabelItemData")
+  netWeightTotal   Decimal?
   grossWeightTotal Decimal?
   quantityDznTotal Decimal?
   quantityPcsTotal Decimal?
-  unitPriceTotal Decimal?
-  totalAmount Decimal?
-  orderItems OrderItem[]
+  unitPriceTotal   Decimal?
+  totalAmount      Decimal?
+  orderItems       OrderItem[]
 
   createdAt DateTime @default(now())
 
   @@map("label_items")
 }
 
-
-
 model LabelItemData {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  
+
   desscription String?
-  color String?
-  netWeight Decimal?
-  grossWeight Decimal?
-  quantityDzn Decimal?
-  quantityPcs Decimal?
-  unitPrice Decimal?
-  totalAmount Decimal?
-  labelItemId String @db.Uuid
-  labelItem LabelItem @relation("LabelItemToLabelItemData", fields: [labelItemId], references: [id], onDelete: Cascade)
+  color        String?
+  netWeight    Decimal?
+  grossWeight  Decimal?
+  quantityDzn  Decimal?
+  quantityPcs  Decimal?
+  unitPrice    Decimal?
+  totalAmount  Decimal?
+  labelItemId  String    @db.Uuid
+  labelItem    LabelItem @relation("LabelItemToLabelItemData", fields: [labelItemId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -260,44 +255,42 @@ model LabelItemData {
 // ================= CARTON =================
 
 model CartonItem {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderNo String
-  
-  orderItems OrderItem[]
-  cartonItemData CartonItemData[] @relation("CartonItemToCartonItemData")
-  totalcartonQty Int?
-  totalNetWeight Decimal?
+
+  orderItems       OrderItem[]
+  cartonItemData   CartonItemData[] @relation("CartonItemToCartonItemData")
+  totalcartonQty   Int?
+  totalNetWeight   Decimal?
   totalGrossWeight Decimal?
-  totalUnitPrice Decimal?
-  totalAmount Decimal?
-  createdAt DateTime @default(now())
+  totalUnitPrice   Decimal?
+  totalAmount      Decimal?
+  createdAt        DateTime         @default(now())
 
   @@map("carton_items")
 }
 
 model CartonItemData {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  
-  cartonMeasurement String?
-  cartonPly String?
-  cartonQty Int?
-  netWeight Decimal?
-  grossWeight Decimal?
-  unit String?
-  unitPrice Decimal?
-  totalAmount Decimal?
 
-  cartonItemId String @db.Uuid
-  cartonItem CartonItem @relation("CartonItemToCartonItemData", fields: [cartonItemId], references: [id], onDelete: Cascade)
+  cartonMeasurement String?
+  cartonPly         String?
+  cartonQty         Int?
+  netWeight         Decimal?
+  grossWeight       Decimal?
+  unit              String?
+  unitPrice         Decimal?
+  totalAmount       Decimal?
+
+  cartonItemId String     @db.Uuid
+  cartonItem   CartonItem @relation("CartonItemToCartonItemData", fields: [cartonItemId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   @@map("carton_item_data")
 }
 
-
 // ================= INVOICE ENUMS =================
-
 
 enum PIStatus {
   DRAFT
@@ -309,31 +302,31 @@ enum PIStatus {
 // ================= INVOICE =================
 
 model Invoice {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  piNumber  String  @unique
-  date      DateTime
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  piNumber String   @unique
+  date     DateTime
 
-  userId    String @db.Uuid
-  user      User? @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+  user   User?  @relation(fields: [userId], references: [id])
 
-  status      PIStatus @default(DRAFT)
+  status PIStatus @default(DRAFT)
 
-  lcManagement LCManagement?
-  invoiceTermsId String? @db.Uuid
-  invoiceTerms InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
-  orderId String @unique @db.Uuid
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-    isDeleted         Boolean @default(false)
+  lcManagement   LCManagement?
+  invoiceTermsId String?       @db.Uuid
+  invoiceTerms   InvoiceTerms? @relation(fields: [invoiceTermsId], references: [id], onDelete: Cascade)
+  orderId        String        @unique @db.Uuid
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  isDeleted      Boolean       @default(false)
+
   @@map("invoices")
 }
-
 
 // ================= TERMS =================
 
 model InvoiceTerms {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String   @default("Default Terms")
   payment      String?
   delivery     String?
@@ -344,9 +337,9 @@ model InvoiceTerms {
   binNo        String?
   hsCode       String?
   remarks      String?
-  isDeleted         Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   invoices Invoice[]
 
@@ -360,45 +353,70 @@ enum CompanyAccountStatus {
   active
   inactive
 
-	@@map("CompanyAccountStatus")
+  @@map("CompanyAccountStatus")
 }
+
 enum CompanyType {
   PARENT
   SISTER
 }
 
-
 model CompanyProfile {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  address      String?
-  phone        String?
+  id                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String
+  address                String?
+  phone                  String?
   // Need to update user relation
-  email        String?
-  website      String?
-  logoUrl      String?
-  city         String?
-  country      String?
-  companyType CompanyType @default(PARENT)
-  postalCode    String?
-  taxId        String?
-  registrationNumber String?
-  tradeLicenseNumber String?
+  email                  String?
+  website                String?
+  logoUrl                String?
+  city                   String?
+  country                String?
+  companyType            CompanyType          @default(PARENT)
+  postalCode             String?
+  taxId                  String?
+  registrationNumber     String?
+  tradeLicenseNumber     String?
   tradeLicenseExpiryDate DateTime?
-  isDeleted         Boolean @default(false)
-  status           CompanyAccountStatus @default(active)
-  bankName         String?
-  bankAccountNumber String?
-  branchName       String?
-  swiftCode        String?
-  routingNumber     String?
+  isDeleted              Boolean              @default(false)
+  status                 CompanyAccountStatus @default(active)
+  bankName               String?
+  bankAccountNumber      String?
+  branchName             String?
+  swiftCode              String?
+  routingNumber          String?
 
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  orders         Order[]
+  accountHeads   AccountHead[]
+  journalEntries JournalEntry[]
+  loans          Loan[]
+  banks          Bank[]
+}
+
+// ================= BANK =================
+
+model Bank {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bankName      String
+  accountNumber String
+  branchName    String?
+  swiftCode     String?
+  routingNumber String?
+
+  // Links this bank to a specific AccountHead in the Chart of Accounts (type: ASSET)
+  accountHeadId String?      @db.Uuid
+  accountHead   AccountHead? @relation(fields: [accountHeadId], references: [id])
+
+  companyProfileId String         @db.Uuid
+  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  orders Order[]
-  accountHeads AccountHead[]
-  journalEntries JournalEntry[]
-  loans Loan[]
+
+  @@map("banks")
 }
 
 // ========================= LCManagement================
@@ -406,40 +424,40 @@ model CompanyProfile {
 model LCManagement {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  bblcNumber       String
-  dateOfOpening    DateTime
-  notifyParty      String?
-  lcIssueBankName  String
+  bblcNumber        String
+  dateOfOpening     DateTime
+  notifyParty       String?
+  lcIssueBankName   String
   lcIssueBankBranch String
-  destination      String?
+  destination       String?
 
-  exportLcNo       String
-  binNo             String
-  hsCodeNo         String
-  remarks          String?
-  billOfExchangeRemarkClient String?
-  billOfExchangeDateClient DateTime?
+  exportLcNo                   String
+  binNo                        String
+  hsCodeNo                     String
+  remarks                      String?
+  billOfExchangeRemarkClient   String?
+  billOfExchangeDateClient     DateTime?
   billOfExchangeLocationClient String?
-  billOfExchangeRemarkBank String?
-  billOfExchangeDateBank DateTime?
-  billOfExchangeLocationBank String?
-  carrier          String
-  salesTerm        String
-  issueDate  DateTime
-  expiryDate DateTime
-  amount     Decimal
-  challanNo String
-  transportMode   String
-  vehicleNo  String
-  driverName String
-  contactNo  String
-  exportLcDate DateTime?
-  userId String @db.Uuid
-  user   User? @relation(fields: [userId], references: [id])
+  billOfExchangeRemarkBank     String?
+  billOfExchangeDateBank       DateTime?
+  billOfExchangeLocationBank   String?
+  carrier                      String
+  salesTerm                    String
+  issueDate                    DateTime
+  expiryDate                   DateTime
+  amount                       Decimal
+  challanNo                    String
+  transportMode                String
+  vehicleNo                    String
+  driverName                   String
+  contactNo                    String
+  exportLcDate                 DateTime?
+  userId                       String    @db.Uuid
+  user                         User?     @relation(fields: [userId], references: [id])
 
-  invoiceId String  @unique @db.Uuid  
-  invoice   Invoice @relation(fields: [invoiceId], references: [id])
-   isDeleted         Boolean @default(false)
+  invoiceId String   @unique @db.Uuid
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -447,25 +465,24 @@ model LCManagement {
 }
 
 model Supplier {
-  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  email        String @unique
-  phone        String
-  address      String
-  location     String
-  suppilerCode String?
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  email            String   @unique
+  phone            String
+  address          String
+  location         String
+  suppilerCode     String?
   openingLiability Decimal?
-  userId String @db.Uuid
-  user   User? @relation(fields: [userId], references: [id])
-  
-  journalEntries JournalEntry[]
-  journalLines JournalLine[]
-  isDeleted         Boolean @default(false)
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+  userId           String   @db.Uuid
+  user             User?    @relation(fields: [userId], references: [id])
 
+  journalEntries JournalEntry[]
+  journalLines   JournalLine[]
+  isDeleted      Boolean        @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
 
 // ================= ACCOUNTING ENUMS =================
 
@@ -479,20 +496,19 @@ enum AccountType {
 
 // ================= ACCOUNTING =================
 
-
 enum PartyType {
-  BUYER          
+  BUYER
   SUPPLIER
-  USER           
+  USER
   BANK
   OTHER
 }
 
-
 enum JournalEntryType {
-   DEBIT
+  DEBIT
   CREDIT
 }
+
 enum JournalEntryCategory {
   CUSTOMER_DUE
   RECEIPT
@@ -501,22 +517,30 @@ enum JournalEntryCategory {
   JOURNAL
   CONTRA
 }
+
 enum JournalEntryStatus {
   DRAFT
   POSTED
 }
 
 model AccountHead {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  code        String?     @unique
-  type        AccountType
-  description String?
-  openingBalance Decimal? @default(0)
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  code           String?     @unique
+  type           AccountType
+  description    String?
+  openingBalance Decimal?    @default(0)
+
+  parentId         String?       @db.Uuid
+  parent           AccountHead?  @relation("AccountHeadHierarchy", fields: [parentId], references: [id])
+  children         AccountHead[] @relation("AccountHeadHierarchy")
+  isControlAccount Boolean       @default(false)
+
   companyProfileId String?         @db.Uuid
   companyProfile   CompanyProfile? @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
 
   journalLines JournalLine[]
+  banks        Bank[]
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -526,26 +550,27 @@ model AccountHead {
 }
 
 model JournalEntry {
-  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  voucherNo   String             @unique
-  date        DateTime
-  type        JournalEntryType
-  category JournalEntryCategory
-  status      JournalEntryStatus @default(DRAFT)
-  narration   String?
+  id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  voucherNo String               @unique
+  date      DateTime
+  // ❌ Removed: `type JournalEntryType` — DEBIT/CREDIT belongs on JournalLine, not on the entry header.
+  //    The `category` field below serves as the entry classifier (CUSTOMER_DUE, RECEIPT, etc.)
+  category  JournalEntryCategory
+  status    JournalEntryStatus   @default(DRAFT)
+  narration String?
 
-  buyerId     String?  @db.Uuid
-  buyer       Buyer?   @relation(fields: [buyerId], references: [id])
+  buyerId String? @db.Uuid
+  buyer   Buyer?  @relation(fields: [buyerId], references: [id])
 
-  supplierId  String?  @db.Uuid
-  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId String?   @db.Uuid
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
 
-  reversesId  String?        @db.Uuid
-  reverses    JournalEntry?  @relation("Reversal", fields: [reversesId], references: [id])
-  reversedBy  JournalEntry[] @relation("Reversal")
+  reversesId String?        @db.Uuid
+  reverses   JournalEntry?  @relation("Reversal", fields: [reversesId], references: [id])
+  reversedBy JournalEntry[] @relation("Reversal")
 
-  invoiceRef  String?
-  dueDate     DateTime?
+  invoiceRef String?
+  dueDate    DateTime?
 
   companyProfileId String         @db.Uuid
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
@@ -558,7 +583,7 @@ model JournalEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([type, status])
+  @@index([category, status])
   @@index([buyerId])
   @@index([supplierId])
   @@index([date])
@@ -566,24 +591,24 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   journalEntryId String       @db.Uuid
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
-  accountHeadId  String       @db.Uuid
-  accountHead    AccountHead  @relation(fields: [accountHeadId], references: [id])
+  accountHeadId String      @db.Uuid
+  accountHead   AccountHead @relation(fields: [accountHeadId], references: [id])
 
-  type           JournalEntryType
-  amount         Decimal
+  type   JournalEntryType
+  amount Decimal
 
-  buyerId        String?   @db.Uuid
-  buyer          Buyer?    @relation(fields: [buyerId], references: [id])
+  buyerId String? @db.Uuid
+  buyer   Buyer?  @relation(fields: [buyerId], references: [id])
 
-  supplierId     String?   @db.Uuid
-  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId String?   @db.Uuid
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
 
-  createdAt      DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([journalEntryId])
   @@index([accountHeadId])
@@ -591,11 +616,11 @@ model JournalLine {
 }
 
 model Loan {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   lenderName      String
   loanType        String?
   principalAmount Decimal
-  interestRate    Decimal  @default(0)
+  interestRate    Decimal   @default(0)
   startDate       DateTime
   endDate         DateTime?
   remarks         String?
@@ -613,10 +638,10 @@ model Loan {
 }
 
 model LoanRepayment {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  loanId           String   @db.Uuid
-  loan             Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  loanId String @db.Uuid
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
   installmentNo    Int
   date             DateTime
@@ -625,9 +650,9 @@ model LoanRepayment {
   totalPaid        Decimal
   remainingBalance Decimal
 
-  journalEntryId   String?  @db.Uuid
+  journalEntryId String? @db.Uuid
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("loan_repayments")
 }

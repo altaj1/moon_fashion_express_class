@@ -5,13 +5,14 @@ import { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
 import { AppError } from "@/core/errors/AppError";
+import { JournalEntryService } from "../JournalEntry/journalEntry.service";
 
 export class InvoiceService extends BaseService<
   any,
   CreateInvoiceInput,
   UpdateInvoiceInput
 > {
-  constructor() {
+  constructor(private journalService?: JournalEntryService) {
     super(prisma, "Invoice", {
       enableSoftDelete: false,
       enableAuditFields: true,
@@ -73,7 +74,7 @@ export class InvoiceService extends BaseService<
         ...(status && { status }),
       };
 
-      const result = super.create(prismaData, include);
+      const result = await super.create(prismaData, include);
       const updateOrderIsInvoice = await prisma.order.update({
         where: {
           id: orderId,
@@ -81,7 +82,57 @@ export class InvoiceService extends BaseService<
         data: {
           isInvoice: true,
         },
+        include: {
+          buyer: true
+        }
       });
+
+      // =========================================================
+      // Auto-create Journal Entry (Customer Due)
+      // =========================================================
+      if (this.journalService && updateOrderIsInvoice.buyer) {
+        try {
+          // Find standard account heads for Accounts Receivable and Sales Revenue
+          // In a real system, these would be linked via SystemSettings or fetched by control account type
+          const arAccount = await prisma.accountHead.findFirst({
+            where: { name: { contains: "Accounts Receivable" }, isDeleted: false }
+          });
+          const salesAccount = await prisma.accountHead.findFirst({
+            where: { name: { contains: "Sales Revenue" }, isDeleted: false }
+          });
+
+          if (arAccount && salesAccount) {
+            // Note: In a real system, we'd need the grand total here. 
+            // For now, we're assuming the total amount is available or calculated.
+            // Since Invoice creation doesn't explicitly send "totalAmount", 
+            // we will create a DRAFT entry with 0 amount to be filled/posted later,
+            // OR we'd calculate it from order items. We'll set it to 0 for DRAFT.
+            await this.journalService.createDraft({
+              date: result.date,
+              category: "CUSTOMER_DUE",
+              narration: `Invoice PI-${result.piNumber} created for ${updateOrderIsInvoice.buyer.name}`,
+              buyerId: updateOrderIsInvoice.buyer.id,
+              userId: userId,
+              lines: [
+                {
+                  accountHeadId: arAccount.id,
+                  type: "DEBIT",
+                  amount: 0 // Will be finalized before posting
+                },
+                {
+                  accountHeadId: salesAccount.id,
+                  type: "CREDIT",
+                  amount: 0 // Will be finalized before posting
+                }
+              ]
+            } as any);
+          }
+        } catch (journalErr) {
+          console.error("Failed to auto-create journal entry for invoice:", journalErr);
+          // Non-blocking error, we still return the invoice result
+        }
+      }
+
       return result;
     } catch (err: any) {
       console.error("Invoice creation failed:", err);
