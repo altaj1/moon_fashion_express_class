@@ -18,8 +18,13 @@ export class BankController extends BaseController {
         this.logAction("create", req, { body, userId });
 
         const result = await this.service.create({
-            userId,
-            ...body,
+            bankName: body.bankName,
+            accountNumber: body.accountNumber,
+            branchName: body.branchName,
+            swiftCode: body.swiftCode,
+            routingNumber: body.routingNumber,
+            accountHeadId: body.accountHeadId,
+            companyProfileId: body.companyProfileId
         });
 
         return this.sendCreatedResponse(

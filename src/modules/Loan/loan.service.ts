@@ -19,7 +19,7 @@ export class LoanService extends BaseService<
     ) {
         super(prisma, "Loan", {
             enableSoftDelete: true,
-            enableAuditFields: true,
+            enableAuditFields: false,
         });
     }
 

@@ -14,7 +14,7 @@ export class BankService extends BaseService<
     constructor(prisma: PrismaClient) {
         super(prisma, "Bank", {
             enableSoftDelete: true,
-            enableAuditFields: true,
+            enableAuditFields: false,
         });
     }
 
@@ -106,7 +106,6 @@ export class BankService extends BaseService<
 
         return super.updateById(id, {
             isDeleted,
-            deletedAt: isDeleted ? new Date() : null,
         });
     }
 

@@ -15,7 +15,7 @@ export class AccountHeadService extends BaseService<
   constructor(prisma: PrismaClient) {
     super(prisma, "AccountHead", {
       enableSoftDelete: true,
-      enableAuditFields: true,
+      enableAuditFields: false,
     });
   }
 
