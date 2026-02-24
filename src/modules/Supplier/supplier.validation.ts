@@ -8,27 +8,21 @@ export const SupplierValidation = {
   // =========================
   create: z
     .object({
-      name: z
-        .string()
-        .min(2, "Name must be at least 2 characters")
-        .max(100, "Name must be at most 100 characters"),
-
+      name: z.string().min(2).max(100),
       email: z.string().email("Invalid email address"),
+      phone: z.string().min(5).max(20),
+      address: z.string().min(5).max(200),
+      location: z.string().min(2).max(100),
 
-      phone: z
+      // NEW FIELDS
+      supplierCode: z
         .string()
-        .min(5, "Phone must be at least 5 characters")
-        .max(20, "Phone must be at most 20 characters"),
-
-      address: z
-        .string()
-        .min(5, "Address must be at least 5 characters")
-        .max(200, "Address must be at most 200 characters"),
-
-      location: z
-        .string()
-        .min(2, "Location must be at least 2 characters")
-        .max(100, "Location must be at most 100 characters"),
+        .min(2, "Code must be at least 2 characters")
+        .max(50, "Code must be at most 50 characters"),
+      openingLiability: z
+        .number()
+        .nonnegative("Liability cannot be negative")
+        .default(0),
     })
     .strict(),
 
@@ -38,10 +32,14 @@ export const SupplierValidation = {
   update: z
     .object({
       name: z.string().min(2).max(100).optional(),
-      email: z.string().email("Invalid email address").optional(),
+      email: z.string().email().optional(),
       phone: z.string().min(5).max(20).optional(),
       address: z.string().min(5).max(200).optional(),
       location: z.string().min(2).max(100).optional(),
+
+      // NEW FIELDS
+      supplierCode: z.string().min(2).max(50).optional(),
+      openingLiability: z.number().nonnegative().optional(),
 
       isDeleted: z.boolean().optional(),
       deletedAt: z.date().nullable().optional(),

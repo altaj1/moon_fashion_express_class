@@ -92,6 +92,8 @@ export const InvoiceTermsValidation = {
         if (val === "false") return false;
         return false;
       }, z.boolean().default(false)),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
     }),
 
     search: z

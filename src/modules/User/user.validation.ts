@@ -67,6 +67,9 @@ export const UserValidation = {
           if (val === "false") return false;
           return false;
         }, z.boolean().default(false)),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        role: roleSchema.optional(),
       })
       .transform((data) => ({
         ...data,

@@ -38,6 +38,15 @@ export class BuyerRoutes {
         this.controller.getBuyers(req, res),
       ),
     );
+
+    this.router.get(
+      "/analytics",
+      validateRequest({
+        query: BuyerValidation.query.list,
+      }),
+      asyncHandler((req, res) => this.controller.analytics(req, res)),
+    );
+
     this.router.get(
       "/:id",
       idValidator,

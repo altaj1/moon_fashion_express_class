@@ -218,6 +218,10 @@ export const LCManagementValidation = {
         return false;
       }, z.boolean().default(false)),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      expiryStartDate: z.string().optional(),
+      expiryEndDate: z.string().optional(),
     }),
   },
 };

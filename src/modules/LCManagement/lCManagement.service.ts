@@ -39,7 +39,7 @@ export class LCManagementService extends BaseService<
         id: data.invoiceId,
       },
     });
-
+    console.log({ invoice });
     if (!invoice) {
       throw new Error("Invoice not found");
     }

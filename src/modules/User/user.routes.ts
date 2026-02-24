@@ -43,7 +43,11 @@ export class UserRoutes {
       listValidator,
       asyncHandler((req, res) => this.controller.getAll(req, res)),
     );
-
+    this.router.get(
+      "/analytics",
+      listValidator,
+      asyncHandler((req, res) => this.controller.analytics(req, res)),
+    );
     this.router.get(
       "/my-profile",
       authenticate,

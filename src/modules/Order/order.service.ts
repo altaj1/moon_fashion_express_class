@@ -1,3 +1,4 @@
+import { de } from "zod/v4/locales";
 import { BaseService } from "@/core/BaseService";
 import {
   OrderStatus,
@@ -9,6 +10,7 @@ import { PaginationOptions } from "@/types/types";
 import { CreateOrderInput, UpdateOrderInput } from "./order.validation";
 import { AppError } from "@/core/errors/AppError";
 import { prisma } from "@/lib/prisma";
+import { date } from "zod";
 export class OrderService extends BaseService<
   any,
   CreateOrderInput,
@@ -232,6 +234,10 @@ export class OrderService extends BaseService<
       sortOrder = "desc",
       status,
       productType,
+      dateFrom,
+      dateTo,
+      deliveryDateFrom,
+      deliveryDateTo,
       isDeleted,
       isInvoice,
       isLc,
@@ -241,11 +247,7 @@ export class OrderService extends BaseService<
     let filters: any = { ...restFilters };
 
     if (search) {
-      filters.OR = [
-        { piNumber: { contains: search, mode: "insensitive" } },
-        { type: { contains: search, mode: "insensitive" } },
-        // Add more searchable fields if needed
-      ];
+      filters.OR = [{ remarks: { contains: search, mode: "insensitive" } }];
     }
     // Status filter
     if (status) {
@@ -269,9 +271,37 @@ export class OrderService extends BaseService<
     if (typeof isLc === "boolean") {
       filters.isLc = isLc;
     }
-    const skip = (page - 1) * limit;
 
-    const total = await this.prisma.order.count({ where: filters });
+    // orderDate filters
+    if (dateFrom || dateTo) {
+      filters.orderDate = {};
+
+      if (dateFrom) {
+        filters.orderDate.gte = new Date(dateFrom as string);
+      }
+
+      if (dateTo) {
+        filters.orderDate.lte = new Date(dateTo as string);
+      }
+    }
+
+    // deliveryDate filters
+    if (deliveryDateFrom || deliveryDateTo) {
+      filters.deliveryDate = {};
+
+      if (deliveryDateFrom) {
+        filters.deliveryDate.gte = new Date(deliveryDateFrom as string);
+      }
+
+      if (deliveryDateTo) {
+        filters.deliveryDate.lte = new Date(deliveryDateTo as string);
+      }
+    }
+    const skip = (page - 1) * limit;
+    console.log({ filters });
+    const total = await this.prisma.order.count({
+      where: filters,
+    });
     const data = await this.prisma.order.findMany({
       where: filters,
       skip,
@@ -323,7 +353,39 @@ export class OrderService extends BaseService<
       data,
     };
   }
+  public async analytics(startDate?: string, endDate?: string) {
+    // Build filter
+    const where: any = {};
 
+    if (startDate && endDate) {
+      where.orderDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    // Pull order dates
+    const orders = await this.prisma.order.findMany({
+      where,
+      select: {
+        orderDate: true,
+      },
+    });
+
+    // Group by date string
+    const grouped: Record<string, number> = {};
+
+    orders.forEach((order: any) => {
+      const date = order.orderDate.toISOString().split("T")[0];
+      grouped[date] = (grouped[date] || 0) + 1;
+    });
+
+    // Convert to array
+    return Object.entries(grouped).map(([date, count]) => ({
+      date,
+      count,
+    }));
+  }
   public async findById(id: string, include?: any) {
     return super.findById(id, {
       buyer: true,

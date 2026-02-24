@@ -453,9 +453,11 @@ model Supplier {
   phone        String
   address      String
   location     String
+  suppilerCode String?
+  openingLiability Decimal?
   userId String @db.Uuid
   user   User? @relation(fields: [userId], references: [id])
-
+  
   journalEntries JournalEntry[]
   journalLines JournalLine[]
   isDeleted         Boolean @default(false)
@@ -511,8 +513,8 @@ model AccountHead {
   type        AccountType
   description String?
   openingBalance Decimal? @default(0)
-  companyProfileId String         @db.Uuid
-  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  companyProfileId String?         @db.Uuid
+  companyProfile   CompanyProfile? @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
 
   journalLines JournalLine[]
 
@@ -528,7 +530,7 @@ model JournalEntry {
   voucherNo   String             @unique
   date        DateTime
   type        JournalEntryType
-   category JournalEntryCategory
+  category JournalEntryCategory
   status      JournalEntryStatus @default(DRAFT)
   narration   String?
 

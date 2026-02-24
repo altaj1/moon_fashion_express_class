@@ -47,7 +47,24 @@ export class OrderController extends BaseController {
       transformedData,
     );
   };
-  /**
+
+  public analytics = async (req: Request, res: Response) => {
+    const query = req.validatedQuery || req.query;
+    const { startDate, endDate } = req.query;
+    this.logAction("analytics", req, { query });
+
+    const result = await this.service.analytics(
+      startDate as string,
+      endDate as string,
+    );
+
+    return this.sendResponse(
+      res,
+      "Order analytics retrieved successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  }; /**
    * Get single Order
    */
   public getOne = async (req: Request, res: Response) => {

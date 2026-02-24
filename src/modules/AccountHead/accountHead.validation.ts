@@ -12,7 +12,10 @@ export const AccountHeadValidation = {
 
       description: z.string().max(500).optional(),
 
-      companyProfileId: z.string().uuid("Invalid company profile ID"),
+      companyProfileId: z
+        .string()
+        .uuid("Invalid company profile ID")
+        .optional(),
 
       isDeleted: z.boolean().optional(),
       openingBalance: z.number().optional(),

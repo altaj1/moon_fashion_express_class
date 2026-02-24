@@ -56,7 +56,6 @@ export class BuyerService extends BaseService<
       ];
     }
 
-    // ADD OTHER FILTERS (if you add later)
     filters = {
       ...filters,
       ...rest,
@@ -90,7 +89,39 @@ export class BuyerService extends BaseService<
       data,
     };
   }
+  public async analytics(startDate?: string, endDate?: string) {
+    // Build date filter
+    const where: any = {};
 
+    if (startDate && endDate) {
+      where.createdAt = {
+        // or replace with your buyer date field
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    // Fetch all buyers in range and select date field
+    const buyers = await this.prisma.buyer.findMany({
+      where,
+      select: {
+        createdAt: true, // replace with real date field
+      },
+    });
+
+    // Group by date
+    const grouped: Record<string, number> = {};
+
+    buyers.forEach((buyer) => {
+      const date = buyer.createdAt.toISOString().split("T")[0];
+      grouped[date] = (grouped[date] || 0) + 1;
+    });
+
+    return Object.entries(grouped).map(([date, count]) => ({
+      date,
+      count,
+    }));
+  }
   public async findById(id: string, include?: any) {
     return super.findById(id, include);
   }

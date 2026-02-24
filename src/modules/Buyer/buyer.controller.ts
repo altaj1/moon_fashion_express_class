@@ -45,6 +45,24 @@ export class BuyerController extends BaseController {
     );
   };
 
+  public analytics = async (req: Request, res: Response) => {
+    const query = req.validatedQuery || req.query;
+    const { startDate, endDate } = req.query;
+    this.logAction("analytics", req, { query });
+
+    const result = await this.service.analytics(
+      startDate as string,
+      endDate as string,
+    );
+
+    return this.sendResponse(
+      res,
+      "Buyer analytics retrieved successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  };
+
   /**
    * Get single Buyer
    */
