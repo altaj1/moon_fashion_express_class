@@ -12,9 +12,7 @@ export const JournalEntryValidation = {
         .min(2, "Voucher number must be at least 2 characters")
         .optional(),
 
-      date: z.string().refine((val) => !isNaN(Date.parse(val)), {
-        message: "Invalid date format",
-      }),
+      date: z.coerce.date(),
 
       // ❌ Previously: `type: z.enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"])`
       //    Those values didn't exist in the Prisma enum. Fixed to use `category` with correct values.
@@ -39,12 +37,7 @@ export const JournalEntryValidation = {
 
       invoiceRef: z.string().optional(),
 
-      dueDate: z
-        .string()
-        .refine((val) => !isNaN(Date.parse(val)), {
-          message: "Invalid due date format",
-        })
-        .optional(),
+      dueDate: z.coerce.date().optional(),
 
       companyProfileId: z.string().uuid("Invalid company profile ID"),
 
@@ -76,12 +69,7 @@ export const JournalEntryValidation = {
     .object({
       voucherNo: z.string().min(2).optional(),
 
-      date: z
-        .string()
-        .refine((val) => !isNaN(Date.parse(val)), {
-          message: "Invalid date format",
-        })
-        .optional(),
+      date: z.coerce.date().optional(),
 
       category: z
         .enum([
@@ -103,12 +91,7 @@ export const JournalEntryValidation = {
 
       invoiceRef: z.string().optional(),
 
-      dueDate: z
-        .string()
-        .refine((val) => !isNaN(Date.parse(val)), {
-          message: "Invalid due date format",
-        })
-        .optional(),
+      dueDate: z.coerce.date().optional(),
 
       createdById: z.string().uuid("Invalid user ID").optional(),
 

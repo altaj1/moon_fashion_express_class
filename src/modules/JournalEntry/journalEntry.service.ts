@@ -86,13 +86,14 @@ export class JournalEntryService extends BaseService<
       const entry = await tx.journalEntry.create({
         data: {
           voucherNo: voucherNo,
-          date: data.date,
+          date: new Date(data.date),
           category: data.category as JournalEntryCategory,
           narration: data.narration,
           buyerId: data.buyerId,
           supplierId: data.supplierId,
           companyProfileId: data.companyProfileId,
           createdById: data.createdById,
+          dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
           status: JournalEntryStatus.DRAFT,
           lines: {
             create: data.lines.map((line) => ({
@@ -242,7 +243,16 @@ export class JournalEntryService extends BaseService<
   }
 
   public async updateById(id: string, data: UpdateJournalEntryInput) {
-    return super.updateById(id, data);
+    const updateData: any = { ...data };
+
+    if (data.date) {
+      updateData.date = new Date(data.date);
+    }
+    if (data.dueDate) {
+      updateData.dueDate = new Date(data.dueDate);
+    }
+
+    return super.updateById(id, updateData);
   }
 
   public async deleteById(id: string) {
