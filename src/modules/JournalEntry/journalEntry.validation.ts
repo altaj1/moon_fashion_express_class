@@ -61,6 +61,8 @@ export const JournalEntryValidation = {
               (val) => stringToNumber(val),
               z.number().positive("Amount must be positive"),
             ),
+            // Sub-ledger identifiers (optional — set when the line involves a specific entity)
+            bankId: z.string().uuid("Invalid bank ID").optional(),
           }),
         )
         .min(2, "At least two journal lines required"),
@@ -119,6 +121,7 @@ export const JournalEntryValidation = {
               (val) => stringToNumber(val),
               z.number().positive("Amount must be positive"),
             ),
+            bankId: z.string().uuid("Invalid bank ID").optional(),
           }),
         )
         .optional(),

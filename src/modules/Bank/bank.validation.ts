@@ -13,9 +13,6 @@ export const BankValidation = {
             swiftCode: z.string().optional(),
             routingNumber: z.string().optional(),
 
-            // Links to a specific AccountHead (type: ASSET) in the Chart of Accounts
-            accountHeadId: z.string().uuid("Invalid account head ID").optional(),
-
             companyProfileId: z.string().uuid("Invalid company profile ID"),
         })
         .strict(),
@@ -30,7 +27,6 @@ export const BankValidation = {
             branchName: z.string().optional(),
             swiftCode: z.string().optional(),
             routingNumber: z.string().optional(),
-            accountHeadId: z.string().uuid("Invalid account head ID").optional(),
             isDeleted: z.boolean().optional(),
         })
         .strict()

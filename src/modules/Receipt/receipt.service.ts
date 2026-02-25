@@ -26,6 +26,7 @@ export class ReceiptService {
 
         if (!receivableAccount) throw new Error("System Error: 'Accounts Receivable' account head not found");
 
+        let bankIdForLine: string | undefined;
         let assetAccountId: string;
 
         if (data.paymentMethod === "CASH") {
@@ -36,18 +37,18 @@ export class ReceiptService {
             assetAccountId = cashAccount.id;
         } else {
             // Bank or Cheque
+            const bankAccount = await this.prisma.accountHead.findFirst({
+                where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
+            });
+            if (!bankAccount) throw new Error("System Error: General Bank account head not found");
+            assetAccountId = bankAccount.id;
+
             if (data.bankAccountId) {
                 const bank = await this.prisma.bank.findUnique({
                     where: { id: data.bankAccountId }
                 });
-                if (!bank || !bank.accountHeadId) throw new Error("Selected bank has no linked Account Head");
-                assetAccountId = bank.accountHeadId;
-            } else {
-                const bankAccount = await this.prisma.accountHead.findFirst({
-                    where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
-                });
-                if (!bankAccount) throw new Error("System Error: General Bank account head not found");
-                assetAccountId = bankAccount.id;
+                if (!bank) throw new Error("Selected bank not found");
+                bankIdForLine = bank.id;
             }
         }
 
@@ -62,7 +63,8 @@ export class ReceiptService {
                 {
                     accountHeadId: assetAccountId,
                     type: "DEBIT", // Increasing asset (Bank/Cash)
-                    amount: data.amount
+                    amount: data.amount,
+                    bankId: bankIdForLine,
                 },
                 {
                     accountHeadId: receivableAccount.id,

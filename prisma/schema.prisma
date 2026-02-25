@@ -396,6 +396,10 @@ model CompanyProfile {
 }
 
 // ================= BANK =================
+// Banks are now sub-ledgers. They do NOT own an AccountHead directly.
+// Instead, every JournalLine that involves a bank carries a `bankId`.
+// To see a bank's ledger: query JournalLines WHERE bankId = <this bank>.
+// The AccountHead used on those lines will be a shared "Cash at Bank" control account.
 
 model Bank {
   id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -405,12 +409,10 @@ model Bank {
   swiftCode     String?
   routingNumber String?
 
-  // Links this bank to a specific AccountHead in the Chart of Accounts (type: ASSET)
-  accountHeadId String?      @db.Uuid
-  accountHead   AccountHead? @relation(fields: [accountHeadId], references: [id])
-
   companyProfileId String         @db.Uuid
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+
+  journalLines JournalLine[]
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -540,7 +542,6 @@ model AccountHead {
   companyProfile   CompanyProfile? @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
 
   journalLines JournalLine[]
-  banks        Bank[]
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -602,16 +603,27 @@ model JournalLine {
   type   JournalEntryType
   amount Decimal
 
+  // ── Sub-Ledger References ──────────────────────────────────────────────────
+  // These optional FKs identify WHICH specific entity (buyer, supplier, bank)
+  // this line belongs to. The accountHeadId points to the shared control account
+  // (e.g. "Accounts Receivable"), while buyerId identifies the specific customer.
+
   buyerId String? @db.Uuid
   buyer   Buyer?  @relation(fields: [buyerId], references: [id])
 
   supplierId String?   @db.Uuid
   supplier   Supplier? @relation(fields: [supplierId], references: [id])
 
+  bankId String? @db.Uuid
+  bank   Bank?   @relation(fields: [bankId], references: [id])
+
   createdAt DateTime @default(now())
 
   @@index([journalEntryId])
   @@index([accountHeadId])
+  @@index([buyerId])
+  @@index([supplierId])
+  @@index([bankId])
   @@map("journal_lines")
 }
 

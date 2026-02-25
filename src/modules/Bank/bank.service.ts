@@ -72,9 +72,6 @@ export class BankService extends BaseService<
             orderBy: {
                 [sortBy]: sortOrder,
             },
-            include: {
-                accountHead: true,
-            },
         });
 
         return {

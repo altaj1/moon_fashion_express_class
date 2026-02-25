@@ -23,7 +23,6 @@ export class BankController extends BaseController {
             branchName: body.branchName,
             swiftCode: body.swiftCode,
             routingNumber: body.routingNumber,
-            accountHeadId: body.accountHeadId,
             companyProfileId: body.companyProfileId
         });
 
@@ -67,9 +66,7 @@ export class BankController extends BaseController {
 
         this.logAction("getOne", req, { id });
 
-        const result = await this.service.findById(id, {
-            accountHead: true
-        });
+        const result = await this.service.findById(id);
 
         if (!result) {
             return this.sendResponse(

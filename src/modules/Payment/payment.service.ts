@@ -27,6 +27,7 @@ export class PaymentService {
 
         if (!payableAccount) throw new Error("System Error: 'Accounts Payable' account head not found");
 
+        let bankIdForLine: string | undefined;
         let assetAccountId: string;
 
         if (data.paymentMethod === "CASH") {
@@ -37,20 +38,20 @@ export class PaymentService {
             assetAccountId = cashAccount.id;
         } else {
             // Bank or Cheque
+            const bankAccount = await this.prisma.accountHead.findFirst({
+                where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
+            });
+            if (!bankAccount) throw new Error("System Error: General Bank account head not found");
+            assetAccountId = bankAccount.id;
+
             if (data.bankAccountId) {
-                // Look up the specific bank's chart of account link
+                // Verify the bank exists
                 const bank = await this.prisma.bank.findUnique({
                     where: { id: data.bankAccountId }
                 });
-                if (!bank || !bank.accountHeadId) throw new Error("Selected bank has no linked Account Head");
-                assetAccountId = bank.accountHeadId;
-            } else {
-                // Fallback to general Bank account
-                const bankAccount = await this.prisma.accountHead.findFirst({
-                    where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
-                });
-                if (!bankAccount) throw new Error("System Error: General Bank account head not found");
-                assetAccountId = bankAccount.id;
+                if (!bank) throw new Error("Selected bank not found");
+                // Set the specific bank sub-ledger ID for the journal line
+                bankIdForLine = bank.id;
             }
         }
 
@@ -70,7 +71,8 @@ export class PaymentService {
                 {
                     accountHeadId: assetAccountId,
                     type: "CREDIT", // Reducing asset
-                    amount: data.amount
+                    amount: data.amount,
+                    bankId: bankIdForLine,
                 }
             ]
         } as any);
