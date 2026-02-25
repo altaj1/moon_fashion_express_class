@@ -4,6 +4,7 @@ import {
   AccountType,
   JournalEntryStatus,
   JournalEntryType,
+  JournalEntryCategory,
 } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import {
@@ -35,7 +36,7 @@ export class JournalEntryService extends BaseService<
 
     // Map category to a 2-letter prefix
     const prefixMap: Record<string, string> = {
-      CUSTOMER_DUE: "CD",
+      BUYER_DUE: "BD",
       SUPPLIER_DUE: "SD",
       RECEIPT: "RV",
       PAYMENT: "PV",
@@ -86,7 +87,7 @@ export class JournalEntryService extends BaseService<
         data: {
           voucherNo: voucherNo,
           date: data.date,
-          category: data.category,
+          category: data.category as JournalEntryCategory,
           narration: data.narration,
           buyerId: data.buyerId,
           supplierId: data.supplierId,

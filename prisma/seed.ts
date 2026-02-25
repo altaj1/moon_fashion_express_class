@@ -34,7 +34,7 @@ async function main() {
         {
             name: "Accounts Receivable",
             type: AccountType.ASSET,
-            description: "Money owed by customers (Control Account)",
+            description: "Money owed by buyers (Control Account)",
             isControlAccount: true,
         },
         {

@@ -88,7 +88,7 @@ export class InvoiceService extends BaseService<
       });
 
       // =========================================================
-      // Auto-create Journal Entry (Customer Due)
+      // Auto-create Journal Entry (Buyer Due)
       // =========================================================
       if (this.journalService && updateOrderIsInvoice.buyer) {
         try {
@@ -109,7 +109,7 @@ export class InvoiceService extends BaseService<
             // OR we'd calculate it from order items. We'll set it to 0 for DRAFT.
             await this.journalService.createDraft({
               date: result.date,
-              category: "CUSTOMER_DUE",
+              category: "BUYER_DUE",
               narration: `Invoice PI-${result.piNumber} created for ${updateOrderIsInvoice.buyer.name}`,
               buyerId: updateOrderIsInvoice.buyer.id,
               userId: userId,

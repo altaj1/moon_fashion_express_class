@@ -35,6 +35,13 @@ export const BankValidation = {
         }),
 
     // =========================
+    // Archive / Toggle Bank
+    // =========================
+    archive: z.object({
+        isDeleted: z.boolean(),
+    }).strict(),
+
+    // =========================
     // Params Validation
     // =========================
     params: {

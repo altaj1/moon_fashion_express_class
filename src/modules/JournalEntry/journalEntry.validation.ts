@@ -19,7 +19,7 @@ export const JournalEntryValidation = {
       // ❌ Previously: `type: z.enum(["GENERAL", "PAYMENT", "RECEIPT", "CONTRA", "ADJUSTMENT"])`
       //    Those values didn't exist in the Prisma enum. Fixed to use `category` with correct values.
       category: z.enum([
-        "CUSTOMER_DUE",
+        "BUYER_DUE",
         "RECEIPT",
         "SUPPLIER_DUE",
         "PAYMENT",
@@ -85,7 +85,7 @@ export const JournalEntryValidation = {
 
       category: z
         .enum([
-          "CUSTOMER_DUE",
+          "BUYER_DUE",
           "RECEIPT",
           "SUPPLIER_DUE",
           "PAYMENT",
@@ -158,7 +158,7 @@ export const JournalEntryValidation = {
       //    Fixed to `category` with correct Prisma enum values.
       category: z
         .enum([
-          "CUSTOMER_DUE",
+          "BUYER_DUE",
           "RECEIPT",
           "SUPPLIER_DUE",
           "PAYMENT",

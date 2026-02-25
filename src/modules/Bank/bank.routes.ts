@@ -25,6 +25,11 @@ export class BankRoutes {
             body: BankValidation.update,
         });
 
+        const archiveValidator = validateRequest({
+            params: BankValidation.params.id,
+            body: BankValidation.archive,
+        });
+
         const idValidator = validateRequest({
             params: BankValidation.params.id,
         });
@@ -79,7 +84,7 @@ export class BankRoutes {
         this.router.put(
             "/:id",
             authenticate,
-            idValidator,
+            archiveValidator,
             asyncHandler((req: Request, res: Response) =>
                 this.controller.delete(req, res),
             ),

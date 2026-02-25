@@ -30,6 +30,17 @@ export class AccountHeadService extends BaseService<
   // =========================================================================
 
   public async create(data: CreateAccountHeadInput, include?: any) {
+    // Hierarchical Integrity Check
+    if (data.parentId) {
+      const parent = await this.prisma.accountHead.findUnique({
+        where: { id: data.parentId },
+        select: { type: true }
+      });
+
+      if (parent && parent.type !== data.type) {
+        throw new Error(`Architectural Mismatch: Cannot create a ${data.type} account under a ${parent.type} parent.`);
+      }
+    }
     return super.create(data, include);
   }
 
@@ -76,7 +87,25 @@ export class AccountHeadService extends BaseService<
     data: UpdateAccountHeadInput,
     include?: any,
   ) {
-    console.log({ data });
+    // Hierarchical Integrity Check for Updates
+    if (data.parentId) {
+      const parent = await this.prisma.accountHead.findUnique({
+        where: { id: data.parentId },
+        select: { type: true }
+      });
+
+      // We need to know the type of the CURRENT account head to compare
+      const current = await this.prisma.accountHead.findUnique({
+        where: { id },
+        select: { type: true }
+      });
+
+      const targetType = data.type || current?.type;
+
+      if (parent && targetType && parent.type !== targetType) {
+        throw new Error(`Architectural Mismatch: Cannot move a ${targetType} account under a ${parent.type} parent.`);
+      }
+    }
     return super.updateById(id, data, include);
   }
 

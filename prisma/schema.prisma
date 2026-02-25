@@ -512,7 +512,7 @@ enum JournalEntryType {
 }
 
 enum JournalEntryCategory {
-  CUSTOMER_DUE
+  BUYER_DUE
   RECEIPT
   SUPPLIER_DUE
   PAYMENT
