@@ -67,7 +67,9 @@ export class BankController extends BaseController {
 
         this.logAction("getOne", req, { id });
 
-        const result = await this.service.findById(id);
+        const result = await this.service.findById(id, {
+            accountHead: true
+        });
 
         if (!result) {
             return this.sendResponse(

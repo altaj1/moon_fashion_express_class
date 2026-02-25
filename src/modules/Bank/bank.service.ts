@@ -14,7 +14,7 @@ export class BankService extends BaseService<
     constructor(prisma: PrismaClient) {
         super(prisma, "Bank", {
             enableSoftDelete: true,
-            enableAuditFields: false,
+            enableAuditFields: true,
         });
     }
 

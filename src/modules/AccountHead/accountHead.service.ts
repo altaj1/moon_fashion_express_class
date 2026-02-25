@@ -15,7 +15,7 @@ export class AccountHeadService extends BaseService<
   constructor(prisma: PrismaClient) {
     super(prisma, "AccountHead", {
       enableSoftDelete: true,
-      enableAuditFields: false,
+      enableAuditFields: true,
     });
   }
 
@@ -40,13 +40,15 @@ export class AccountHeadService extends BaseService<
     include?: any,
   ) {
     return super.findMany(filters, pagination, orderBy, {
-      companyProfile: true,
+      parent: true,
+      children: true,
     });
   }
 
   public async findById(id: string, include?: any) {
     return super.findById(id, {
-      companyProfile: true,
+      parent: true,
+      children: true,
     });
   }
 
@@ -62,6 +64,8 @@ export class AccountHeadService extends BaseService<
         code: data.code,
         description: data.description,
         openingBalance: data.openingBalance,
+        parentId: data.parentId,
+        isControlAccount: data.isControlAccount,
       },
       include,
     );

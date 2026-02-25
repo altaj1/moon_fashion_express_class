@@ -5,18 +5,15 @@ export const AccountHeadValidation = {
   create: z
     .object({
       name: z.string().min(2, "Name must be at least 2 characters").max(100),
-
       code: z.string().max(50).optional(),
-
       type: z.enum(["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"]),
-
       description: z.string().max(500).optional(),
-
+      parentId: z.string().uuid().nullable().optional(),
+      isControlAccount: z.boolean().default(false).optional(),
       companyProfileId: z
         .string()
         .uuid("Invalid company profile ID")
         .optional(),
-
       isDeleted: z.boolean().optional(),
       openingBalance: z.number().optional(),
     })
@@ -30,13 +27,12 @@ export const AccountHeadValidation = {
       phone: z.string().max(20).optional(),
       address: z.string().max(200).optional(),
       code: z.string().max(50).optional(),
-
+      parentId: z.string().uuid().nullable().optional(),
+      isControlAccount: z.boolean().optional(),
       type: z
         .enum(["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"])
         .optional(),
-
       description: z.string().max(500).optional(),
-
       isDeleted: z.boolean().optional(),
       openingBalance: z.number().optional(),
     })

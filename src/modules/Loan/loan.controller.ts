@@ -147,7 +147,7 @@ export class LoanController extends BaseController {
 
         this.logAction("recordRepayment", req, { id, body });
 
-        const result = await this.service.recordRepayment(id, body);
+        const result = await this.service.recordRepayment(id, body, req.userId as string);
 
         return this.sendCreatedResponse(
             res,

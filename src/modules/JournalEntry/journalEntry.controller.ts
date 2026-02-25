@@ -16,7 +16,10 @@ export class JournalEntryController extends BaseController {
 
         this.logAction("create", req, { body });
 
-        const result = await this.service.createDraft(body);
+        const result = await this.service.createDraft({
+            ...body,
+            createdById: req.userId
+        });
 
         // ❌ Previously used generic `this.service.create(body)` which skipped journal line creation.
         //    Now using `createDraft()` which properly creates the entry + lines in a transaction.

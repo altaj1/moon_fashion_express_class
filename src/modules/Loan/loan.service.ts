@@ -19,7 +19,7 @@ export class LoanService extends BaseService<
     ) {
         super(prisma, "Loan", {
             enableSoftDelete: true,
-            enableAuditFields: false,
+            enableAuditFields: true,
         });
     }
 
@@ -145,13 +145,11 @@ export class LoanService extends BaseService<
         return super.updateById(id, data, include);
     }
 
-    // Soft Delete
     public async softDelete(data: any): Promise<any> {
         const { id, isDeleted } = data;
 
         return super.updateById(id, {
             isDeleted,
-            deletedAt: isDeleted ? new Date() : null,
         });
     }
 
@@ -163,7 +161,7 @@ export class LoanService extends BaseService<
     // Loan Repayments
     // =========================================================
 
-    public async recordRepayment(loanId: string, data: CreateLoanRepaymentInput) {
+    public async recordRepayment(loanId: string, data: CreateLoanRepaymentInput, userId: string) {
         return this.prisma.$transaction(async (tx) => {
             // 1. Get the loan to check remaining balance
             const loan = await tx.loan.findUnique({
@@ -247,7 +245,7 @@ export class LoanService extends BaseService<
                             date: new Date(data.date),
                             category: "PAYMENT", // Paying back loan is a payment
                             narration: `Repayment for Loan ${loan.lenderName} (Installment ${data.installmentNo})`,
-                            userId: "system", // Should ideally be passed down
+                            userId: userId, // Correctly passed from controller
                             lines
                         } as any);
                     }

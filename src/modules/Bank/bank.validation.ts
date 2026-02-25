@@ -32,7 +32,6 @@ export const BankValidation = {
             routingNumber: z.string().optional(),
             accountHeadId: z.string().uuid("Invalid account head ID").optional(),
             isDeleted: z.boolean().optional(),
-            deletedAt: z.date().nullable().optional(),
         })
         .strict()
         .refine((data) => Object.keys(data).length > 0, {
@@ -44,7 +43,7 @@ export const BankValidation = {
     // =========================
     params: {
         id: z.object({
-            id: z.string().min(1, "Bank ID is required"),
+            id: z.string().uuid("Invalid Bank ID format"),
         }),
     },
 
@@ -65,6 +64,8 @@ export const BankValidation = {
                 }, z.number().int().min(1).max(100).default(10)),
 
                 search: z.string().optional(),
+
+                companyProfileId: z.string().uuid().optional(),
 
                 sortBy: z
                     .enum(["bankName", "accountNumber", "createdAt"])
