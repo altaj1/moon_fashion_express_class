@@ -42,6 +42,15 @@ export class OrderRoutes {
       listValidator,
       asyncHandler((req, res) => this.controller.analytics(req, res)),
     );
+
+    this.router.get(
+      "/analytics-orders-status",
+      listValidator,
+      asyncHandler((req, res) =>
+        this.controller.analyticsOrdersStatus(req, res),
+      ),
+    );
+
     this.router.get(
       "/:id",
       idValidator,

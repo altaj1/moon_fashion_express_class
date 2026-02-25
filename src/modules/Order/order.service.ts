@@ -386,6 +386,52 @@ export class OrderService extends BaseService<
       count,
     }));
   }
+
+  public async analyticsOrdersStatus(startDate?: string, endDate?: string) {
+    const where: any = {};
+
+    if (startDate && endDate) {
+      where.orderDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    // Get all orders with status
+    const orders = await this.prisma.order.findMany({
+      where,
+      select: {
+        status: true,
+      },
+    });
+
+    // All possible statuses
+    const allStatuses = [
+      "DRAFT",
+      "PENDING",
+      "PROCESSING",
+      "APPROVED",
+      "DELIVERED",
+      "CANCELLED",
+    ];
+
+    // Initialize counts with 0
+    const statusCount: Record<string, number> = {};
+
+    allStatuses.forEach((status) => {
+      statusCount[status] = 0;
+    });
+
+    // Count actual data
+    orders.forEach((order: any) => {
+      statusCount[order.status] += 1;
+    });
+
+    // Convert to required format
+    return allStatuses.map((status) => ({
+      [status]: statusCount[status],
+    }));
+  }
   public async findById(id: string, include?: any) {
     return super.findById(id, {
       buyer: true,
