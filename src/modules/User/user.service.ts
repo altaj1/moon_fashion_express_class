@@ -144,9 +144,9 @@ export class UserService extends BaseService<any, UpdateUserInput> {
 
   public async softDelete(data: any): Promise<any> {
     const { id, isDeleted } = data;
+    console.log({ isDeleted });
     return super.updateById(id, {
-      isDeleted,
-      deletedAt: isDeleted ? new Date() : null,
+      isDeleted: isDeleted,
     });
   }
 

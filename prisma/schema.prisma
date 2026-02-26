@@ -38,6 +38,7 @@ enum Module {
   accounts
   piManagement
   lcManagement
+  suppliers
 }
 
 model User {

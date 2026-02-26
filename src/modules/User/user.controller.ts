@@ -172,7 +172,7 @@ export class UserController extends BaseController {
 
     await this.service.softDelete({
       id,
-      isDeleted: body?.isDeleted ?? true,
+      isDeleted: body?.isDeleted,
     });
 
     return this.sendResponse(

@@ -38,6 +38,7 @@ export class CompanyProfileController extends BaseController {
       status,
       startDate,
       endDate,
+      isDeleted,
     } = query;
 
     const filters: any = {};
@@ -72,6 +73,12 @@ export class CompanyProfileController extends BaseController {
       filters.deliveryDate = {};
       if (startDate) filters.deliveryDate.gte = new Date(startDate as string);
       if (endDate) filters.deliveryDate.lte = new Date(endDate as string);
+    }
+
+    if (isDeleted) {
+      filters.isDeleted = isDeleted;
+    } else {
+      filters.isDeleted = false;
     }
     const result = await this.service.findMany(filters, pagination, orderBy);
 

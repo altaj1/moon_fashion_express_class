@@ -44,6 +44,7 @@ export class LCManagementController extends BaseController {
       expiryEndDate,
       sortBy = "createdAt",
       sortOrder = "desc",
+      isDeleted,
     } = query;
 
     const filters: any = {};
@@ -79,6 +80,11 @@ export class LCManagementController extends BaseController {
       filters.amount = {};
       if (minAmount) filters.amount.gte = Number(minAmount);
       if (maxAmount) filters.amount.lte = Number(maxAmount);
+    }
+    if (isDeleted) {
+      filters.isDeleted = isDeleted;
+    } else {
+      filters.isDeleted = false;
     }
 
     const result = await this.service.findMany(

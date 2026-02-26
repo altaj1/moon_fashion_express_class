@@ -29,6 +29,7 @@ export const UserValidation = {
       designation: z.string().optional(),
       modules: z.array(z.string()).optional(),
       avatarUrl: z.string().url("Invalid URL format").optional(),
+      isDeleted: z.boolean().optional(),
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {

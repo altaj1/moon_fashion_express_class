@@ -88,6 +88,7 @@ export class UserRoutes {
       authenticate,
       authorize("admin"),
       idValidator,
+      updateValidator,
       asyncHandler((req, res) => this.controller.softDelete(req, res)),
     );
   }
