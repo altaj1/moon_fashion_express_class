@@ -28,7 +28,7 @@ export const LoanValidation = {
                 .optional(),
             remarks: z.string().optional(),
 
-            companyProfileId: z.string().uuid("Invalid company profile ID"),
+            companyProfileId: z.union([z.string().uuid(), z.null(), z.undefined()]).optional(),
         })
         .strict(),
 

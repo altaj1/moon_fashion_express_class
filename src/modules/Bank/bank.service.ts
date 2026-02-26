@@ -65,13 +65,37 @@ export class BankService extends BaseService<
             where: filters,
         });
 
-        const data = await this.prisma.bank.findMany({
+        const banks = await this.prisma.bank.findMany({
             where: filters,
             skip,
             take: limit,
             orderBy: {
                 [sortBy]: sortOrder,
             },
+        });
+
+        // ── Real-Time Balance Aggregation ───────────────────────────
+        const bankIds = banks.map(b => b.id);
+        const balances = await this.prisma.journalLine.groupBy({
+            by: ['bankId', 'type'],
+            where: {
+                bankId: { in: bankIds },
+                journalEntry: { status: 'POSTED' } // Only count confirmed transactions
+            },
+            _sum: {
+                amount: true
+            }
+        });
+
+        const data = banks.map(bank => {
+            const bankBalances = balances.filter(b => b.bankId === bank.id);
+            const debits = Number(bankBalances.find(b => b.type === 'DEBIT')?._sum?.amount || 0);
+            const credits = Number(bankBalances.find(b => b.type === 'CREDIT')?._sum?.amount || 0);
+
+            return {
+                ...bank,
+                balance: debits - credits
+            };
         });
 
         return {

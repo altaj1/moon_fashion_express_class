@@ -33,6 +33,18 @@ export class LoanService extends BaseService<
     // =========================================================================
 
     public async create(data: CreateLoanInput, userId: string, include?: any) {
+        // Find default company profile if not provided
+        if (!data.companyProfileId) {
+            const defaultProfile = await this.prisma.companyProfile.findFirst({
+                where: { isDeleted: false }
+            });
+            if (defaultProfile) {
+                data.companyProfileId = defaultProfile.id;
+            } else {
+                throw new Error("No active company profile found to associate with this loan.");
+            }
+        }
+
         const result = await super.create(data, include);
 
         // =========================================================
@@ -41,28 +53,43 @@ export class LoanService extends BaseService<
         if (this.journalService) {
             try {
                 // Find standard account heads for Bank and Loan Payable
+                // Professional Tip: In a real system, these should be mapped in settings.
                 const bankAccount = await this.prisma.accountHead.findFirst({
-                    where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
+                    where: {
+                        OR: [
+                            { name: { contains: "Bank", mode: "insensitive" } },
+                            { name: { contains: "Cash", mode: "insensitive" } }
+                        ],
+                        type: "ASSET",
+                        isDeleted: false
+                    }
                 });
                 const loanPayableAccount = await this.prisma.accountHead.findFirst({
-                    where: { name: { contains: "Bank Loan" }, type: "LIABILITY", isDeleted: false }
+                    where: {
+                        OR: [
+                            { name: { contains: "Bank Loan", mode: "insensitive" } },
+                            { name: { contains: "Loan Payable", mode: "insensitive" } }
+                        ],
+                        type: "LIABILITY",
+                        isDeleted: false
+                    }
                 });
 
                 if (bankAccount && loanPayableAccount) {
                     await this.journalService.createDraft({
                         date: new Date(data.startDate),
-                        category: "RECEIPT", // Receiving loan money is a receipt
-                        narration: `Received Loan: ${data.lenderName} (${data.loanType})`,
+                        category: "RECEIPT",
+                        narration: `[Auto] Loan Disbursed: ${data.lenderName} (${data.loanType || "General"})`,
                         userId: userId,
                         lines: [
                             {
                                 accountHeadId: bankAccount.id,
-                                type: "DEBIT", // Increase Asset (Bank)
+                                type: "DEBIT",
                                 amount: data.principalAmount
                             },
                             {
                                 accountHeadId: loanPayableAccount.id,
-                                type: "CREDIT", // Increase Liability (Loan Payable)
+                                type: "CREDIT",
                                 amount: data.principalAmount
                             }
                         ]
@@ -204,13 +231,34 @@ export class LoanService extends BaseService<
             if (this.journalService) {
                 try {
                     const bankAccount = await tx.accountHead.findFirst({
-                        where: { name: { contains: "Bank" }, type: "ASSET", isDeleted: false }
+                        where: {
+                            OR: [
+                                { name: { contains: "Bank", mode: "insensitive" } },
+                                { name: { contains: "Cash", mode: "insensitive" } }
+                            ],
+                            type: "ASSET",
+                            isDeleted: false
+                        }
                     });
                     const loanPayableAccount = await tx.accountHead.findFirst({
-                        where: { name: { contains: "Bank Loan" }, type: "LIABILITY", isDeleted: false }
+                        where: {
+                            OR: [
+                                { name: { contains: "Bank Loan", mode: "insensitive" } },
+                                { name: { contains: "Loan Payable", mode: "insensitive" } }
+                            ],
+                            type: "LIABILITY",
+                            isDeleted: false
+                        }
                     });
                     const interestExpenseAccount = await tx.accountHead.findFirst({
-                        where: { name: { contains: "Interest" }, type: "EXPENSE", isDeleted: false }
+                        where: {
+                            OR: [
+                                { name: { contains: "Interest", mode: "insensitive" } },
+                                { name: { contains: "Finance Cost", mode: "insensitive" } }
+                            ],
+                            type: "EXPENSE",
+                            isDeleted: false
+                        }
                     });
 
                     if (bankAccount && loanPayableAccount && interestExpenseAccount) {
