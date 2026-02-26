@@ -18,7 +18,9 @@ export class SupplierController extends BaseController {
     this.logAction("create", req, { body, userId });
 
     const result = await this.service.create({
-      userId,
+      user: {
+        connect: { id: userId },
+      },
       ...body,
     });
 

@@ -473,7 +473,7 @@ model Supplier {
   phone            String
   address          String
   location         String
-  suppilerCode     String?
+  supplierCode     String?
   openingLiability Decimal?
   userId           String   @db.Uuid
   user             User?    @relation(fields: [userId], references: [id])
