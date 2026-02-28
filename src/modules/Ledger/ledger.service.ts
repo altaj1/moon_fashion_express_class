@@ -103,8 +103,8 @@ export class LedgerService {
         voucherNo: line.journalEntry.voucherNo,
         category: line.journalEntry.category,
         narration: line.journalEntry.narration,
-        accountName: contraAccountName, // Standard ledger shows contra
-        debitedAccountName: debitedAccountName, // User specific request
+        accountName: debitedAccountName, // Show the debit side name
+        debitedAccountName: debitedAccountName,
         debit: isDebit ? amount : 0,
         credit: !isDebit ? amount : 0,
         balance: runningBalance,
@@ -220,7 +220,7 @@ export class LedgerService {
         voucherNo: line.journalEntry.voucherNo,
         category: line.journalEntry.category,
         narration: line.journalEntry.narration,
-        accountName: contraAccountName,
+        accountName: debitedAccountName, // Show the debit side name
         debitedAccountName: debitedAccountName,
         debit: !isCredit ? amount : 0,
         credit: isCredit ? amount : 0,
