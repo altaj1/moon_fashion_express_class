@@ -323,6 +323,7 @@ export class LedgerService {
 
   /**
    * Get balances for all buyers
+   * Strategy: Query JournalEntry (which has buyerId) → include lines → aggregate
    */
   public async getBuyerBalances() {
     const buyers = await this.prisma.buyer.findMany({
@@ -330,38 +331,41 @@ export class LedgerService {
       select: { id: true, name: true, phone: true, location: true },
     });
 
-    const lines = await this.prisma.journalLine.findMany({
+    // Query through JournalEntry (guaranteed to have buyerId set)
+    const entries = await this.prisma.journalEntry.findMany({
       where: {
-        journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
         buyerId: { not: null },
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
       },
       include: {
-        journalEntry: {
-          select: { status: true }
-        }
-      }
+        lines: {
+          select: { type: true, amount: true },
+        },
+      },
     });
 
-    console.log(`[LedgerService] Found ${lines.length} journal lines for buyer summary`);
+    console.log(`[LedgerService] getBuyerBalances: found ${entries.length} journal entries with buyerId`);
 
     // Group by buyer
     const summaryMap: Record<string, { totalInvoiced: number; totalReceived: number; balance: number }> = {};
 
-    lines.forEach((l) => {
-      const bid = String(l.buyerId);
-      const amt = Number(l.amount);
+    entries.forEach((entry) => {
+      const bid = String(entry.buyerId);
 
       if (!summaryMap[bid]) {
         summaryMap[bid] = { totalInvoiced: 0, totalReceived: 0, balance: 0 };
       }
 
-      if (l.type === "DEBIT") {
-        summaryMap[bid].totalInvoiced += amt;
-        summaryMap[bid].balance += amt;
-      } else {
-        summaryMap[bid].totalReceived += amt;
-        summaryMap[bid].balance -= amt;
-      }
+      entry.lines.forEach((line) => {
+        const amt = Number(line.amount);
+        if (line.type === "DEBIT") {
+          summaryMap[bid].totalInvoiced += amt;
+          summaryMap[bid].balance += amt;
+        } else {
+          summaryMap[bid].totalReceived += amt;
+          summaryMap[bid].balance -= amt;
+        }
+      });
     });
 
     return buyers.map((b) => {
