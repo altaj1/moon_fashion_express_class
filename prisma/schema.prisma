@@ -65,7 +65,7 @@ model User {
   lcManagement   LCManagement[]
   suppliers      Supplier[]
   journalEntries JournalEntry[]
-
+  employeeAdvances MoiCashBook[] @relation("EmployeeIOU")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -581,6 +581,7 @@ model JournalEntry {
   createdBy   User?   @relation(fields: [createdById], references: [id])
 
   lines JournalLine[]
+advances MoiCashBook[] @relation("AdvanceJournal")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -668,4 +669,48 @@ model LoanRepayment {
   createdAt DateTime @default(now())
 
   @@map("loan_repayments")
+}
+
+
+// ==========================================
+// PETTY CASH & EMPLOYEE ADVANCE (IOU)
+// ==========================================
+
+model MoiCashBook {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  voucherNo       String         @unique // e.g., PC-2026-001
+  amount          Decimal        @db.Decimal(20, 2)
+  purpose         String         // e.g., "Office Stationery" or "Travel Advance"
+
+  // The person receiving the cash
+  employeeId      String         @db.Uuid
+  employee        User           @relation("EmployeeIOU", fields: [employeeId], references: [id])
+
+  // Tracking the lifecycle
+  type            AdvanceType    @default(ISSUE) // ISSUE (Cash out) or SETTLE (Return/Adjustment)
+  status          AdvanceStatus  @default(PENDING)
+
+  // Link to your main Accounting Ledger
+journalEntryId  String?        @db.Uuid @unique
+journalEntry    JournalEntry?  @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
+
+  // Metadata
+  remarks         String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("employee_advances")
+}
+
+enum AdvanceType {
+  ISSUE    // Giving cash to employee
+  SETTLE   // Employee returning cash OR adjusting against an expense bill
+  EXPENSE  // Direct office expense (not an IOU)
+}
+
+enum AdvanceStatus {
+  PENDING
+  APPROVED
+  SETTLED
+  REJECTED
 }
