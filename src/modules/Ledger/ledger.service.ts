@@ -2,7 +2,7 @@ import { PrismaClient, JournalEntryStatus } from "@/generated/prisma/client";
 import { LedgerListQueryDto, GeneralLedgerQueryDto } from "./ledger.validation";
 
 export class LedgerService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   // =========================================================================
   // Buyer Ledger (Computed from JournalLines)
@@ -14,9 +14,9 @@ export class LedgerService {
     // Base filter: only POSTED entries for this specific buyer
     const baseWhere: any = {
       buyerId: buyerId,
-      //   journalEntry: {
-      //     status: JournalEntryStatus.POSTED,
-      //   },
+      journalEntry: {
+        status: JournalEntryStatus.POSTED,
+      },
     };
 
     // Date range filter
@@ -32,10 +32,10 @@ export class LedgerService {
       const priorLines = await this.prisma.journalLine.findMany({
         where: {
           buyerId: buyerId,
-          // journalEntry: {
-          //     status: JournalEntryStatus.POSTED,
-          //     date: { lt: new Date(startDate) },
-          // },
+          journalEntry: {
+            status: JournalEntryStatus.POSTED,
+            date: { lt: new Date(startDate) },
+          },
         },
       });
 
@@ -121,9 +121,9 @@ export class LedgerService {
 
     const baseWhere: any = {
       supplierId: supplierId,
-      // journalEntry: {
-      //     status: JournalEntryStatus.POSTED,
-      // },
+      journalEntry: {
+        status: JournalEntryStatus.POSTED,
+      },
     };
 
     if (startDate || endDate) {
@@ -137,10 +137,10 @@ export class LedgerService {
       const priorLines = await this.prisma.journalLine.findMany({
         where: {
           supplierId: supplierId,
-          //   journalEntry: {
-          //     status: JournalEntryStatus.POSTED,
-          //     date: { lt: new Date(startDate) },
-          //   },
+          journalEntry: {
+            status: JournalEntryStatus.POSTED,
+            date: { lt: new Date(startDate) },
+          },
         },
       });
 
@@ -212,61 +212,176 @@ export class LedgerService {
     };
   }
 
-  // =========================================================================
-  // Dashboard Audit Trail (Recent Journal Entries)
-  // =========================================================================
-  public async getAuditTrail(limit: number = 20) {
-    return this.prisma.journalEntry.findMany({
-      take: limit,
-      orderBy: { updatedAt: "desc" },
+  /**
+   * Get Audit Trail (Recent Entries)
+   */
+  public async getAuditTrail(query: any = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.startDate || query.endDate) {
+      where.date = {};
+      if (query.startDate) where.date.gte = new Date(query.startDate);
+      if (query.endDate) where.date.lte = new Date(query.endDate);
+    }
+    if (query.category) where.category = query.category;
+
+    const [total, data] = await Promise.all([
+      this.prisma.journalEntry.count({ where }),
+      this.prisma.journalEntry.findMany({
+        where,
+        take: limit,
+        skip,
+        orderBy: { date: "desc" },
+        include: {
+          createdBy: { select: { firstName: true, lastName: true, email: true } },
+          buyer: { select: { name: true } },
+          supplier: { select: { name: true } },
+          lines: { include: { accountHead: { select: { name: true } } } },
+        },
+      }),
+    ]);
+
+    return {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data,
+    };
+  }
+
+  /**
+   * Get Dashboard Stats (High-level accounting overview)
+   */
+  public async getDashboardStats() {
+    // 1. Total Buyer Dues (Receivables)
+    const buyerLines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalEntryStatus.POSTED },
+        buyerId: { not: null },
+      },
+      select: { type: true, amount: true },
+    });
+
+    const totalReceivables = buyerLines.reduce((acc, line) => {
+      const amount = Number(line.amount);
+      return acc + (line.type === "DEBIT" ? amount : -amount);
+    }, 0);
+
+    // 2. Total Supplier Dues (Payables)
+    const supplierLines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalEntryStatus.POSTED },
+        supplierId: { not: null },
+      },
+      select: { type: true, amount: true },
+    });
+
+    const totalPayables = supplierLines.reduce((acc, line) => {
+      const amount = Number(line.amount);
+      return acc + (line.type === "CREDIT" ? amount : -amount);
+    }, 0);
+
+    // 3. Cash & Bank Balance
+    const assetAccounts = await this.prisma.accountHead.findMany({
+      where: {
+        type: "ASSET",
+        OR: [
+          { name: { contains: "Cash", mode: "insensitive" } },
+          { name: { contains: "Bank", mode: "insensitive" } },
+        ],
+      },
       include: {
-        createdBy: {
-          select: { firstName: true, lastName: true, email: true },
+        journalLines: {
+          where: { journalEntry: { status: JournalEntryStatus.POSTED } },
+          select: { type: true, amount: true },
         },
       },
     });
-  }
 
-  // =========================================================================
-  // Dashboard Quick Stats
-  // =========================================================================
-  public async getDashboardStats() {
-    // 1. Total Buyer Dues (sum of all Buyer balances)
-    // 2. Total Supplier Dues (sum of all Supplier balances)
-    // 3. Cash & Bank Balance (sum of all ASSET accounts linked to Bank/Cash)
-
-    // For simplicity in Phase 1, we aggregate from AccountHeads
-    const accounts = await this.prisma.accountHead.findMany();
-
-    let totalAssets = 0;
-    let totalLiabilities = 0;
-    let totalRevenue = 0;
-    let totalExpenses = 0;
-
-    accounts.forEach((acc) => {
-      const balance = Number(acc.openingBalance || 0);
-      switch (acc.type) {
-        case "ASSET":
-          totalAssets += balance;
-          break;
-        case "LIABILITY":
-          totalLiabilities += balance;
-          break;
-        case "INCOME":
-          totalRevenue += balance;
-          break;
-        case "EXPENSE":
-          totalExpenses += balance;
-          break;
-      }
+    let cashAndBankBalance = 0;
+    assetAccounts.forEach((acc) => {
+      const opening = Number(acc.openingBalance || 0);
+      const activity = acc.journalLines.reduce((sum, line) => {
+        const amount = Number(line.amount);
+        return sum + (line.type === "DEBIT" ? amount : -amount);
+      }, 0);
+      cashAndBankBalance += opening + activity;
     });
 
     return {
-      totalAssets,
-      totalLiabilities,
-      totalRevenue,
-      totalExpenses,
-      netProfit: totalRevenue - totalExpenses,
+      totalReceivables,
+      totalPayables,
+      cashAndBankBalance,
+      totalAssets: cashAndBankBalance + totalReceivables,
+      totalLiabilities: totalPayables,
     };
+  }
+
+  /**
+   * Get balances for all buyers
+   */
+  public async getBuyerBalances() {
+    const buyers = await this.prisma.buyer.findMany({
+      where: { isDeleted: false },
+      select: { id: true, name: true, phone: true, location: true },
+    });
+
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalEntryStatus.POSTED },
+        buyerId: { not: null },
+      },
+      select: { buyerId: true, type: true, amount: true },
+    });
+
+    // Group by buyer
+    const balanceMap: Record<string, number> = {};
+    lines.forEach((l) => {
+      const bid = l.buyerId!;
+      const amt = Number(l.amount);
+      const delta = l.type === "DEBIT" ? amt : -amt;
+      balanceMap[bid] = (balanceMap[bid] || 0) + delta;
+    });
+
+    return buyers.map((b) => ({
+      ...b,
+      balance: balanceMap[b.id] || 0,
+    }));
+  }
+
+  /**
+   * Get balances for all suppliers
+   */
+  public async getSupplierBalances() {
+    const suppliers = await this.prisma.supplier.findMany({
+      where: { isDeleted: false },
+      select: { id: true, name: true, phone: true, location: true },
+    });
+
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalEntryStatus.POSTED },
+        supplierId: { not: null },
+      },
+      select: { supplierId: true, type: true, amount: true },
+    });
+
+    // Group by supplier
+    const balanceMap: Record<string, number> = {};
+    lines.forEach((l) => {
+      const sid = l.supplierId!;
+      const amt = Number(l.amount);
+      const delta = l.type === "CREDIT" ? amt : -amt; // Liability: Credit increases balance
+      balanceMap[sid] = (balanceMap[sid] || 0) + delta;
+    });
+
+    return suppliers.map((s) => ({
+      ...s,
+      balance: balanceMap[s.id] || 0,
+    }));
   }
 }

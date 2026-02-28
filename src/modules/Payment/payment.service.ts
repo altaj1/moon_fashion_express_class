@@ -77,6 +77,9 @@ export class PaymentService {
             ]
         } as any);
 
+        // 4. Auto-post the entry (payments are always balanced)
+        await this.journalService.postEntry(journalEntry.id);
+
         // If we had a dedicated Payment table (like PaymentReceipt), we would insert it here.
         // For now, the Journal Entry IS the source of truth for the payment.
 

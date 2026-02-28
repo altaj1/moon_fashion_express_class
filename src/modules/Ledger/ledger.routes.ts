@@ -54,12 +54,30 @@ export class LedgerRoutes {
             ),
         );
 
-        // Get Dashboard Stats
+        // Get Stats
         this.router.get(
-            "/dashboard/stats",
+            "/stats",
             authenticate,
             asyncHandler((req: Request, res: Response) =>
                 this.controller.getDashboardStats(req, res),
+            ),
+        );
+
+        // Get Buyer Balances Summary
+        this.router.get(
+            "/buyers/balances",
+            authenticate,
+            asyncHandler((req: Request, res: Response) =>
+                this.controller.getBuyerBalances(req, res),
+            ),
+        );
+
+        // Get Supplier Balances Summary
+        this.router.get(
+            "/suppliers/balances",
+            authenticate,
+            asyncHandler((req: Request, res: Response) =>
+                this.controller.getSupplierBalances(req, res),
             ),
         );
 

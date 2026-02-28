@@ -75,9 +75,8 @@ export class LedgerController extends BaseController {
     public getAuditTrail = async (req: Request, res: Response) => {
         this.logAction("getAuditTrail", req, {});
 
-        const limit = Number(req.query.limit) || 20;
-
-        const result = await this.service.getAuditTrail(limit);
+        const query = req.validatedQuery || req.query;
+        const result = await this.service.getAuditTrail(query);
 
         return this.sendResponse(
             res,
@@ -85,5 +84,23 @@ export class LedgerController extends BaseController {
             HTTPStatusCode.OK,
             result,
         );
+    };
+
+    /**
+     * Get all buyer balances
+     */
+    public getBuyerBalances = async (req: Request, res: Response) => {
+        this.logAction("getBuyerBalances", req, {});
+        const result = await this.service.getBuyerBalances();
+        return this.sendResponse(res, "Buyer balances retrieved", HTTPStatusCode.OK, result);
+    };
+
+    /**
+     * Get all supplier balances
+     */
+    public getSupplierBalances = async (req: Request, res: Response) => {
+        this.logAction("getSupplierBalances", req, {});
+        const result = await this.service.getSupplierBalances();
+        return this.sendResponse(res, "Supplier balances retrieved", HTTPStatusCode.OK, result);
     };
 }

@@ -74,6 +74,9 @@ export class ReceiptService {
             ]
         } as any);
 
+        // 4. Auto-post the entry (receipts are always balanced)
+        await this.journalService.postEntry(journalEntry.id);
+
         return journalEntry;
     }
 
