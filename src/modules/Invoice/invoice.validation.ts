@@ -48,6 +48,7 @@ export const InvoiceValidation = {
       invoiceTermsId: z.string().uuid().nullable().optional(),
 
       status: z.enum(["DRAFT", "SENT", "APPROVED", "CANCELLED"]).optional(),
+      isDeleted: z.boolean().optional(),
     })
     .strict(),
 

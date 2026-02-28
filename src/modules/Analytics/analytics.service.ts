@@ -1,5 +1,10 @@
 import { BaseService } from "@/core/BaseService";
-import { PrismaClient } from "@/generated/prisma/client";
+import {
+  AccountType,
+  JournalEntryStatus,
+  JournalEntryType,
+  PrismaClient,
+} from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import {
   CreateAnalyticsInput,
@@ -28,10 +33,6 @@ export class AnalyticsService extends BaseService<
   // Since BaseService methods are protected, we must expose them here
   // =========================================================================
 
-  public async create(data: CreateAnalyticsInput, include?: any) {
-    return super.create(data, include);
-  }
-
   public async getAllAnalytics(startDate?: string, endDate?: string) {
     const dateFilter: any = {};
 
@@ -59,20 +60,213 @@ export class AnalyticsService extends BaseService<
       orders: ordersCount,
     };
   }
-  public async findById(id: string, include?: any) {
-    return super.findById(id, include);
+
+  public async getFinancialOverview() {
+    const [
+      cash,
+      bank,
+      receivable,
+      payable,
+      revenue,
+      expense,
+      loanOutstanding,
+      employeeAdvanceOutstanding,
+    ] = await Promise.all([
+      this.getCashBalance(),
+      this.getBankBalance(),
+      this.getReceivable(),
+      this.getPayable(),
+      this.getMonthlyRevenue(),
+      this.getMonthlyExpense(),
+      this.getLoanOutstanding(),
+      this.getEmployeeAdvanceOutstanding(),
+    ]);
+
+    const netProfit = revenue - expense;
+    const workingCapital = cash + bank + receivable - payable;
+
+    return {
+      cash,
+      bank,
+      receivable,
+      payable,
+      revenue,
+      expense,
+      netProfit,
+      loanOutstanding,
+      employeeAdvanceOutstanding,
+      workingCapital,
+    };
   }
 
-  public async updateById(
-    id: string,
-    data: UpdateAnalyticsInput,
-    include?: any,
-  ) {
-    return super.updateById(id, data, include);
+  // =====================================================
+  // DOUBLE ENTRY HELPER
+  // =====================================================
+
+  private calculateBalance(lines: { type: JournalEntryType; amount: any }[]) {
+    return lines.reduce((total, line) => {
+      return line.type === JournalEntryType.DEBIT
+        ? total + Number(line.amount)
+        : total - Number(line.amount);
+    }, 0);
   }
 
-  public async deleteById(id: string) {
-    return super.deleteById(id);
+  // =====================================================
+  // CASH
+  // =====================================================
+
+  private async getCashBalance() {
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        accountHead: {
+          type: AccountType.ASSET,
+          name: { contains: "cash", mode: "insensitive" },
+        },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return this.calculateBalance(lines);
+  }
+
+  // =====================================================
+  // BANK
+  // =====================================================
+
+  private async getBankBalance() {
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        bankId: { not: null },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return this.calculateBalance(lines);
+  }
+
+  // =====================================================
+  // RECEIVABLE
+  // =====================================================
+
+  private async getReceivable() {
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        buyerId: { not: null },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return this.calculateBalance(lines);
+  }
+
+  // =====================================================
+  // PAYABLE
+  // =====================================================
+
+  private async getPayable() {
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        supplierId: { not: null },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return Math.abs(this.calculateBalance(lines));
+  }
+
+  // =====================================================
+  // MONTHLY REVENUE
+  // =====================================================
+
+  private async getMonthlyRevenue() {
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        accountHead: {
+          type: AccountType.INCOME,
+        },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+          date: { gte: start },
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return Math.abs(this.calculateBalance(lines));
+  }
+
+  // =====================================================
+  // MONTHLY EXPENSE
+  // =====================================================
+
+  private async getMonthlyExpense() {
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        accountHead: {
+          type: AccountType.EXPENSE,
+        },
+        journalEntry: {
+          status: JournalEntryStatus.POSTED,
+          date: { gte: start },
+        },
+      },
+      select: { type: true, amount: true },
+    });
+
+    return this.calculateBalance(lines);
+  }
+
+  // =====================================================
+  // LOAN OUTSTANDING
+  // =====================================================
+
+  private async getLoanOutstanding() {
+    const loans = await this.prisma.loan.findMany({
+      where: { isDeleted: false },
+      include: { repayments: true },
+    });
+
+    return loans.reduce((total, loan) => {
+      const paid = loan.repayments.reduce(
+        (sum, r) => sum + Number(r.principal),
+        0,
+      );
+      return total + (Number(loan.principalAmount) - paid);
+    }, 0);
+  }
+
+  // =====================================================
+  // EMPLOYEE ADVANCE
+  // =====================================================
+
+  private async getEmployeeAdvanceOutstanding() {
+    const advances = await this.prisma.employeeAdvance.findMany({
+      where: {
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+    });
+
+    return advances.reduce((sum, adv) => sum + Number(adv.amount), 0);
   }
 
   public async exists(filters: any) {
