@@ -80,36 +80,46 @@ export class LedgerService {
       },
     });
 
-    // 3. Compute running balance
+    // 3. Compute running balance, grouped by journal entry to show single row per transaction
     let runningBalance = openingBalance;
-    const data = lines.map((line) => {
-      const amount = Number(line.amount);
+    const groupedData: Record<string, any> = {};
+
+    lines.forEach((line) => {
       const isDebit = line.type === "DEBIT";
+      const amount = Number(line.amount);
 
-      runningBalance += isDebit ? amount : -amount;
+      if (!groupedData[line.journalEntryId]) {
+        // Find the "primary" account for this transaction. 
+        // For a buyer, we typically want to see the account that balances the AR (e.g. Sales, Cash)
+        // We find the line that is NOT the AR line if possible.
+        // As a simplification, we'll try to find the non-receivable line, or just take the first line.
+        const otherLine = line.journalEntry.lines.find(l => l.id !== line.id) || line.journalEntry.lines[0];
 
-      // Find contra account (the first account on the opposite side of this line)
-      const contraLine = line.journalEntry.lines.find(l => l.type !== line.type);
-      const contraAccountName = contraLine?.accountHead?.name || "Multiple Accounts";
+        groupedData[line.journalEntryId] = {
+          id: line.journalEntryId,
+          date: line.journalEntry.date,
+          voucherNo: line.journalEntry.voucherNo,
+          category: line.journalEntry.category,
+          narration: line.journalEntry.narration,
+          accountName: line.journalEntry.lines.length > 2 ? "Multiple Accounts" : (otherLine?.accountHead?.name || "N/A"),
+          debitedAccountName: line.journalEntry.lines.length > 2 ? "Multiple Accounts" : (otherLine?.accountHead?.name || "N/A"),
+          debit: 0,
+          credit: 0,
+          balance: 0, // will set later
+        };
+      }
 
-      // User requested: "only show the debit account"
-      // We will provide the account that was debited in this transaction
-      const debitedLine = line.journalEntry.lines.find(l => l.type === "DEBIT");
-      const debitedAccountName = debitedLine?.accountHead?.name || "N/A";
-
-      return {
-        id: line.id,
-        date: line.journalEntry.date,
-        voucherNo: line.journalEntry.voucherNo,
-        category: line.journalEntry.category,
-        narration: line.journalEntry.narration,
-        accountName: debitedAccountName, // Show the debit side name
-        debitedAccountName: debitedAccountName,
-        debit: isDebit ? amount : 0,
-        credit: !isDebit ? amount : 0,
-        balance: runningBalance,
-      };
+      if (isDebit) {
+        groupedData[line.journalEntryId].debit += amount;
+        runningBalance += amount;
+      } else {
+        groupedData[line.journalEntryId].credit += amount;
+        runningBalance -= amount;
+      }
+      groupedData[line.journalEntryId].balance = runningBalance;
     });
+
+    const data = Object.values(groupedData);
 
     return {
       openingBalance,
@@ -200,33 +210,41 @@ export class LedgerService {
     });
 
     let runningBalance = openingBalance;
-    const data = lines.map((line) => {
-      const amount = Number(line.amount);
+    const groupedData: Record<string, any> = {};
+
+    lines.forEach((line) => {
       const isCredit = line.type === "CREDIT";
+      const amount = Number(line.amount);
 
-      runningBalance += isCredit ? amount : -amount;
+      if (!groupedData[line.journalEntryId]) {
+        const otherLine = line.journalEntry.lines.find(l => l.id !== line.id) || line.journalEntry.lines[0];
 
-      // Find contra account
-      const contraLine = line.journalEntry.lines.find(l => l.type !== line.type);
-      const contraAccountName = contraLine?.accountHead?.name || "Multiple Accounts";
+        groupedData[line.journalEntryId] = {
+          id: line.journalEntryId,
+          date: line.journalEntry.date,
+          voucherNo: line.journalEntry.voucherNo,
+          category: line.journalEntry.category,
+          narration: line.journalEntry.narration,
+          accountName: line.journalEntry.lines.length > 2 ? "Multiple Accounts" : (otherLine?.accountHead?.name || "N/A"),
+          debitedAccountName: line.journalEntry.lines.length > 2 ? "Multiple Accounts" : (otherLine?.accountHead?.name || "N/A"),
+          debit: 0,
+          credit: 0,
+          balance: 0, // will set later
+        };
+      }
 
-      // Only show debit account
-      const debitedLine = line.journalEntry.lines.find(l => l.type === "DEBIT");
-      const debitedAccountName = debitedLine?.accountHead?.name || "N/A";
+      if (isCredit) {
+        groupedData[line.journalEntryId].credit += amount;
+        runningBalance += amount;
+      } else {
+        groupedData[line.journalEntryId].debit += amount;
+        runningBalance -= amount;
+      }
 
-      return {
-        id: line.id,
-        date: line.journalEntry.date,
-        voucherNo: line.journalEntry.voucherNo,
-        category: line.journalEntry.category,
-        narration: line.journalEntry.narration,
-        accountName: debitedAccountName, // Show the debit side name
-        debitedAccountName: debitedAccountName,
-        debit: !isCredit ? amount : 0,
-        credit: isCredit ? amount : 0,
-        balance: runningBalance,
-      };
+      groupedData[line.journalEntryId].balance = runningBalance;
     });
+
+    const data = Object.values(groupedData);
 
     return {
       openingBalance,
