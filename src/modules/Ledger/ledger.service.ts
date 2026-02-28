@@ -15,7 +15,7 @@ export class LedgerService {
     const baseWhere: any = {
       buyerId: buyerId,
       journalEntry: {
-        status: JournalEntryStatus.POSTED,
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
       },
     };
 
@@ -33,7 +33,7 @@ export class LedgerService {
         where: {
           buyerId: buyerId,
           journalEntry: {
-            status: JournalEntryStatus.POSTED,
+            status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
             date: { lt: new Date(startDate) },
           },
         },
@@ -122,7 +122,7 @@ export class LedgerService {
     const baseWhere: any = {
       supplierId: supplierId,
       journalEntry: {
-        status: JournalEntryStatus.POSTED,
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
       },
     };
 
@@ -138,7 +138,7 @@ export class LedgerService {
         where: {
           supplierId: supplierId,
           journalEntry: {
-            status: JournalEntryStatus.POSTED,
+            status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
             date: { lt: new Date(startDate) },
           },
         },
@@ -332,25 +332,49 @@ export class LedgerService {
 
     const lines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
         buyerId: { not: null },
       },
-      select: { buyerId: true, type: true, amount: true },
+      include: {
+        journalEntry: {
+          select: { status: true }
+        }
+      }
     });
+
+    console.log(`[LedgerService] Found ${lines.length} journal lines for buyer summary`);
 
     // Group by buyer
-    const balanceMap: Record<string, number> = {};
+    const summaryMap: Record<string, { totalInvoiced: number; totalReceived: number; balance: number }> = {};
+
     lines.forEach((l) => {
-      const bid = l.buyerId!;
+      const bid = String(l.buyerId);
       const amt = Number(l.amount);
-      const delta = l.type === "DEBIT" ? amt : -amt;
-      balanceMap[bid] = (balanceMap[bid] || 0) + delta;
+
+      if (!summaryMap[bid]) {
+        summaryMap[bid] = { totalInvoiced: 0, totalReceived: 0, balance: 0 };
+      }
+
+      if (l.type === "DEBIT") {
+        summaryMap[bid].totalInvoiced += amt;
+        summaryMap[bid].balance += amt;
+      } else {
+        summaryMap[bid].totalReceived += amt;
+        summaryMap[bid].balance -= amt;
+      }
     });
 
-    return buyers.map((b) => ({
-      ...b,
-      balance: balanceMap[b.id] || 0,
-    }));
+    return buyers.map((b) => {
+      const bid = String(b.id);
+      const summary = summaryMap[bid] || { totalInvoiced: 0, totalReceived: 0, balance: 0 };
+
+      return {
+        ...b,
+        totalInvoiced: summary.totalInvoiced,
+        totalReceived: summary.totalReceived,
+        balance: summary.balance,
+      };
+    });
   }
 
   /**
@@ -364,24 +388,48 @@ export class LedgerService {
 
     const lines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
         supplierId: { not: null },
       },
-      select: { supplierId: true, type: true, amount: true },
+      include: {
+        journalEntry: {
+          select: { status: true }
+        }
+      }
     });
+
+    console.log(`[LedgerService] Found ${lines.length} journal lines for supplier summary`);
 
     // Group by supplier
-    const balanceMap: Record<string, number> = {};
+    const summaryMap: Record<string, { totalBilled: number; totalPaid: number; balance: number }> = {};
+
     lines.forEach((l) => {
-      const sid = l.supplierId!;
+      const sid = String(l.supplierId);
       const amt = Number(l.amount);
-      const delta = l.type === "CREDIT" ? amt : -amt; // Liability: Credit increases balance
-      balanceMap[sid] = (balanceMap[sid] || 0) + delta;
+
+      if (!summaryMap[sid]) {
+        summaryMap[sid] = { totalBilled: 0, totalPaid: 0, balance: 0 };
+      }
+
+      if (l.type === "CREDIT") {
+        summaryMap[sid].totalBilled += amt;
+        summaryMap[sid].balance += amt;
+      } else {
+        summaryMap[sid].totalPaid += amt;
+        summaryMap[sid].balance -= amt;
+      }
     });
 
-    return suppliers.map((s) => ({
-      ...s,
-      balance: balanceMap[s.id] || 0,
-    }));
+    return suppliers.map((s) => {
+      const sid = String(s.id);
+      const summary = summaryMap[sid] || { totalBilled: 0, totalPaid: 0, balance: 0 };
+
+      return {
+        ...s,
+        totalBilled: summary.totalBilled,
+        totalPaid: summary.totalPaid,
+        balance: summary.balance,
+      };
+    });
   }
 }
