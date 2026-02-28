@@ -260,7 +260,7 @@ export class AnalyticsService extends BaseService<
   // =====================================================
 
   private async getEmployeeAdvanceOutstanding() {
-    const advances = await this.prisma.employeeAdvance.findMany({
+    const advances = await this.prisma.moiCashBook.findMany({
       where: {
         status: { in: ["PENDING", "APPROVED"] },
       },
