@@ -3,6 +3,7 @@ import { MoiCashBookController } from "./moiCashBook.controller";
 import { MoiCashBookValidation } from "./moiCashBook.validation";
 import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
+import { authenticate } from "@/middleware/auth";
 
 export class MoiCashBookRoutes {
   private router: Router;
@@ -31,6 +32,20 @@ export class MoiCashBookRoutes {
       "/",
       createValidator,
       asyncHandler((req, res) => this.controller.create(req, res)),
+    );
+    this.router.get(
+      "/summaries",
+      asyncHandler((req, res) => this.controller.getSummaries(req, res)),
+    );
+    this.router.get(
+      "/employee/:id",
+      authenticate,
+      asyncHandler((req, res) => this.controller.getEmployeeDetail(req, res)),
+    );
+    this.router.get(
+      "/employee/:id/summary",
+      authenticate,
+      asyncHandler((req, res) => this.controller.getEmployeeSummary(req, res)),
     );
     this.router.get(
       "/",

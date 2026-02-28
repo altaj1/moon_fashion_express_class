@@ -126,4 +126,69 @@ export class MoiCashBookController extends BaseController {
       HTTPStatusCode.OK,
     );
   };
+
+  /**
+   * Get summaries by employee
+   */
+  public getSummaries = async (req: Request, res: Response) => {
+    this.logAction("getSummaries", req, {});
+
+    const result = await this.service.getSummaries();
+
+    return this.sendResponse(
+      res,
+      "Employee summaries retrieved successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  };
+
+  /**
+   * Get employee detail with transaction history
+   */
+  public getEmployeeDetail = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const pagination = this.extractPaginationParams(req);
+
+    this.logAction("getEmployeeDetail", req, { id, pagination });
+
+    const result = await this.service.getEmployeeDetail(id, pagination);
+
+    return this.sendPaginatedResponse(
+      res,
+      {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+        hasNext: result.hasNext,
+        hasPrevious: result.hasPrevious,
+      },
+      "Employee details retrieved successfully",
+      result.data,
+    );
+  };
+
+  public getEmployeeSummary = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    this.logAction("getEmployeeSummary", req, { id });
+
+    const result = await this.service.getEmployeeSummary(id);
+
+    if (!result) {
+      return this.sendResponse(
+        res,
+        "Employee not found",
+        HTTPStatusCode.NOT_FOUND,
+      );
+    }
+
+    return this.sendResponse(
+      res,
+      "Employee summary retrieved successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  };
 }
