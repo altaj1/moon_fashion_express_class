@@ -78,11 +78,18 @@ export class LedgerController extends BaseController {
         const query = req.validatedQuery || req.query;
         const result = await this.service.getAuditTrail(query);
 
-        return this.sendResponse(
+        return this.sendPaginatedResponse(
             res,
+            {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
+                hasNext: result.page < result.totalPages,
+                hasPrevious: result.page > 1,
+            },
             "Audit trail retrieved successfully",
-            HTTPStatusCode.OK,
-            result,
+            result.data,
         );
     };
 
