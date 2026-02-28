@@ -20,6 +20,7 @@ import { PaymentModule } from "./modules/Payment/PaymentModule";
 import { ReceiptModule } from "./modules/Receipt/ReceiptModule";
 import { AnalyticsModule } from "./modules/Analytics/AnalyticsModule";
 import { MoiCashBookModule } from "./modules/MoiCashBook/MoiCashBookModule";
+import { FinancialReportModule } from "./modules/FinancialReport/FinancialReportModule";
 // Main application bootstrap function
 async function bootstrap() {
   try {
@@ -49,6 +50,7 @@ async function bootstrap() {
     app.registerModule(new ReceiptModule());
     app.registerModule(new AnalyticsModule());
     app.registerModule(new MoiCashBookModule());
+    app.registerModule(new FinancialReportModule());
     AppLogger.info("✔ All modules registered successfully");
 
     // Start the server
