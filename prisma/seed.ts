@@ -19,52 +19,132 @@ async function main() {
     // Define default chart of accounts
     // We need AR, AP, Cash, Bank, Sales Revenue, and COGS/Inventory
     const accounts = [
+        // ============= ASSETS =============
         {
-            name: "Cash",
+            name: "Cash in Hand",
+            code: "1001",
             type: AccountType.ASSET,
-            description: "Petty cash and drawer funds",
+            description: "Physical cash in office",
             isControlAccount: false,
         },
         {
             name: "Main Bank Account",
+            code: "1002",
             type: AccountType.ASSET,
-            description: "Primary checking account",
+            description: "Primary checking account (DBBL)",
             isControlAccount: false,
         },
         {
             name: "Accounts Receivable",
+            code: "1100",
             type: AccountType.ASSET,
             description: "Money owed by buyers (Control Account)",
             isControlAccount: true,
         },
         {
-            name: "Inventory",
+            name: "Inventory (Stock)",
+            code: "1200",
             type: AccountType.ASSET,
-            description: "Current value of fabrics, labels, cartons",
+            description: "Valuation of fabrics, tags, cartons",
             isControlAccount: true,
         },
         {
+            name: "Furniture & Fixtures",
+            code: "1501",
+            type: AccountType.ASSET,
+            description: "Office furniture",
+            isControlAccount: false,
+        },
+
+        // ============= LIABILITIES =============
+        {
             name: "Accounts Payable",
+            code: "2100",
             type: AccountType.LIABILITY,
             description: "Money owed to suppliers (Control Account)",
             isControlAccount: true,
         },
         {
-            name: "Sales Revenue",
-            type: AccountType.INCOME,
-            description: "Revenue from invoices",
-            isControlAccount: false,
-        },
-        {
-            name: "Cost of Goods Sold",
-            type: AccountType.EXPENSE,
-            description: "Direct costs of production (Fabric, Labor, etc.)",
-            isControlAccount: false,
-        },
-        {
-            name: "Bank Loan - Standard Bank",
+            name: "Bank Loan - Short Term",
+            code: "2201",
             type: AccountType.LIABILITY,
-            description: "Primary lending facility",
+            description: "Lending facility",
+            isControlAccount: false,
+        },
+        {
+            name: "Accrued Salaries",
+            code: "2301",
+            type: AccountType.LIABILITY,
+            description: "Salaries payable",
+            isControlAccount: false,
+        },
+
+        // ============= EQUITY =============
+        {
+            name: "Owner's Capital",
+            code: "3001",
+            type: AccountType.EQUITY,
+            description: "Initial investment",
+            isControlAccount: false,
+        },
+        {
+            name: "Retained Earnings",
+            code: "3101",
+            type: AccountType.EQUITY,
+            description: "Accumulated profits",
+            isControlAccount: false,
+        },
+
+        // ============= INCOME =============
+        {
+            name: "Sales Revenue",
+            code: "4001",
+            type: AccountType.INCOME,
+            description: "Revenue from merchandise sales",
+            isControlAccount: false,
+        },
+        {
+            name: "Interest Income",
+            code: "4101",
+            type: AccountType.INCOME,
+            description: "Bank interest",
+            isControlAccount: false,
+        },
+
+        // ============= EXPENSES =============
+        {
+            name: "Cost of Goods Sold (COGS)",
+            code: "5001",
+            type: AccountType.EXPENSE,
+            description: "Direct manufacturing costs",
+            isControlAccount: false,
+        },
+        {
+            name: "Office Rent",
+            code: "5101",
+            type: AccountType.EXPENSE,
+            description: "Monthly office rental",
+            isControlAccount: false,
+        },
+        {
+            name: "Staff Salaries",
+            code: "5201",
+            type: AccountType.EXPENSE,
+            description: "Employee compensation",
+            isControlAccount: false,
+        },
+        {
+            name: "Utilities (Electricity/Water/Gas)",
+            code: "5301",
+            type: AccountType.EXPENSE,
+            description: "Building utility bills",
+            isControlAccount: false,
+        },
+        {
+            name: "Factory Overheads",
+            code: "5401",
+            type: AccountType.EXPENSE,
+            description: "Indirect production costs",
             isControlAccount: false,
         }
     ];

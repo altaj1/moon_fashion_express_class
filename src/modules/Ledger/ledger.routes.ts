@@ -6,92 +6,92 @@ import { asyncHandler } from "@/middleware/asyncHandler";
 import { authenticate } from "@/middleware/auth";
 
 export class LedgerRoutes {
-    private router: Router;
-    private controller: LedgerController;
+  private router: Router;
+  private controller: LedgerController;
 
-    constructor(controller: LedgerController) {
-        this.router = Router();
-        this.controller = controller;
-        this.initializeRoutes();
-    }
+  constructor(controller: LedgerController) {
+    this.router = Router();
+    this.controller = controller;
+    this.initializeRoutes();
+  }
 
-    private initializeRoutes(): void {
-        const listValidator = validateRequest({
-            query: LedgerValidation.query.ledgerList,
-        });
+  private initializeRoutes(): void {
+    const listValidator = validateRequest({
+      query: LedgerValidation.query.ledgerList,
+    });
 
-        const buyerIdValidator = validateRequest({
-            params: LedgerValidation.params.buyerId,
-        });
+    const buyerIdValidator = validateRequest({
+      params: LedgerValidation.params.buyerId,
+    });
 
-        const supplierIdValidator = validateRequest({
-            params: LedgerValidation.params.supplierId,
-        });
+    const supplierIdValidator = validateRequest({
+      params: LedgerValidation.params.supplierId,
+    });
 
-        // =========================
-        // Define Routes
-        // =========================
+    // =========================
+    // Define Routes
+    // =========================
 
-        // Get Buyer Ledger
-        this.router.get(
-            "/buyer/:id",
-            authenticate,
-            buyerIdValidator,
-            listValidator,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getBuyerLedger(req, res),
-            ),
-        );
+    // Get Buyer Ledger
+    this.router.get(
+      "/buyer/:id",
+      authenticate,
+      buyerIdValidator,
+      listValidator,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getBuyerLedger(req, res),
+      ),
+    );
 
-        // Get Supplier Ledger
-        this.router.get(
-            "/supplier/:id",
-            authenticate,
-            supplierIdValidator,
-            listValidator,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getSupplierLedger(req, res),
-            ),
-        );
+    // Get Supplier Ledger
+    this.router.get(
+      "/supplier/:id",
+      authenticate,
+      supplierIdValidator,
+      listValidator,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getSupplierLedger(req, res),
+      ),
+    );
 
-        // Get Stats
-        this.router.get(
-            "/stats",
-            authenticate,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getDashboardStats(req, res),
-            ),
-        );
+    // Get Stats
+    this.router.get(
+      "/stats",
+      authenticate,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getDashboardStats(req, res),
+      ),
+    );
 
-        // Get Buyer Balances Summary
-        this.router.get(
-            "/buyers/balances",
-            authenticate,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getBuyerBalances(req, res),
-            ),
-        );
+    // Get Buyer Balances Summary
+    this.router.get(
+      "/buyers/balances",
+      authenticate,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getBuyerBalances(req, res),
+      ),
+    );
 
-        // Get Supplier Balances Summary
-        this.router.get(
-            "/suppliers/balances",
-            authenticate,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getSupplierBalances(req, res),
-            ),
-        );
+    // Get Supplier Balances Summary
+    this.router.get(
+      "/suppliers/balances",
+      authenticate,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getSupplierBalances(req, res),
+      ),
+    );
 
-        // Get Audit Trail
-        this.router.get(
-            "/audit-trail",
-            authenticate,
-            asyncHandler((req: Request, res: Response) =>
-                this.controller.getAuditTrail(req, res),
-            ),
-        );
-    }
+    // Get Audit Trail
+    this.router.get(
+      "/audit-trail",
+      authenticate,
+      asyncHandler((req: Request, res: Response) =>
+        this.controller.getAuditTrail(req, res),
+      ),
+    );
+  }
 
-    public getRouter(): Router {
-        return this.router;
-    }
+  public getRouter(): Router {
+    return this.router;
+  }
 }

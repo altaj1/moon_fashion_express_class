@@ -19,7 +19,9 @@ export const PaymentValidation = {
             referenceId: z.string().optional(), // Check number, transaction ID, etc.
             remarks: z.string().optional(),
 
-            // The bank/cash account being used to pay
+            // Operational Overrides
+            assetAccountId: z.string().uuid("Invalid asset account ID").optional(),
+            payableAccountId: z.string().uuid("Invalid payable account ID").optional(),
             bankAccountId: z.string().uuid("Invalid bank account ID").optional(),
         })
         .strict()
