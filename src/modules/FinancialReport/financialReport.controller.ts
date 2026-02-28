@@ -33,4 +33,30 @@ export class FinancialReportController extends BaseController {
             result,
         );
     };
+
+    /**
+     * Generate Trial Balance Report (with metadata)
+     */
+    public generateReport = async (req: Request, res: Response) => {
+        const { startDate, endDate } = req.query as { startDate: string; endDate: string };
+
+        if (!startDate || !endDate) {
+            return this.sendResponse(
+                res,
+                "Start date and end date are required",
+                HTTPStatusCode.BAD_REQUEST,
+            );
+        }
+
+        this.logAction("generateReport", req, { startDate, endDate });
+
+        const result = await this.service.getTrialBalanceData(startDate, endDate);
+
+        return this.sendResponse(
+            res,
+            "Report generated successfully",
+            HTTPStatusCode.OK,
+            result,
+        );
+    };
 }

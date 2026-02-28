@@ -121,4 +121,18 @@ export class FinancialReportService {
 
         return report;
     }
+
+    public async getTrialBalanceData(startDate: string, endDate: string) {
+        const report = await this.getTrialBalance(startDate, endDate);
+        const company = await this.prisma.companyProfile.findFirst({
+            where: { isDeleted: false, companyType: "PARENT" },
+        });
+
+        return {
+            report,
+            company,
+            period: { startDate, endDate },
+            generatedAt: new Date().toISOString(),
+        };
+    }
 }

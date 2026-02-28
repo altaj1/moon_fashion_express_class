@@ -19,6 +19,11 @@ export class FinancialReportRoutes {
             authenticate,
             asyncHandler((req, res) => this.controller.getTrialBalance(req, res)),
         );
+        this.router.get(
+            "/generate-report",
+            authenticate,
+            asyncHandler((req, res) => this.controller.generateReport(req, res)),
+        );
     }
 
     public getRouter(): Router {
