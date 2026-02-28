@@ -67,6 +67,11 @@ export class LedgerService {
             date: true,
             category: true,
             narration: true,
+            lines: {
+              include: {
+                accountHead: { select: { name: true } },
+              },
+            },
           },
         },
         accountHead: {
@@ -83,13 +88,23 @@ export class LedgerService {
 
       runningBalance += isDebit ? amount : -amount;
 
+      // Find contra account (the first account on the opposite side of this line)
+      const contraLine = line.journalEntry.lines.find(l => l.type !== line.type);
+      const contraAccountName = contraLine?.accountHead?.name || "Multiple Accounts";
+
+      // User requested: "only show the debit account"
+      // We will provide the account that was debited in this transaction
+      const debitedLine = line.journalEntry.lines.find(l => l.type === "DEBIT");
+      const debitedAccountName = debitedLine?.accountHead?.name || "N/A";
+
       return {
         id: line.id,
         date: line.journalEntry.date,
         voucherNo: line.journalEntry.voucherNo,
         category: line.journalEntry.category,
         narration: line.journalEntry.narration,
-        accountName: line.accountHead.name,
+        accountName: contraAccountName, // Standard ledger shows contra
+        debitedAccountName: debitedAccountName, // User specific request
         debit: isDebit ? amount : 0,
         credit: !isDebit ? amount : 0,
         balance: runningBalance,
@@ -171,6 +186,11 @@ export class LedgerService {
             date: true,
             category: true,
             narration: true,
+            lines: {
+              include: {
+                accountHead: { select: { name: true } },
+              },
+            },
           },
         },
         accountHead: {
@@ -186,13 +206,22 @@ export class LedgerService {
 
       runningBalance += isCredit ? amount : -amount;
 
+      // Find contra account
+      const contraLine = line.journalEntry.lines.find(l => l.type !== line.type);
+      const contraAccountName = contraLine?.accountHead?.name || "Multiple Accounts";
+
+      // Only show debit account
+      const debitedLine = line.journalEntry.lines.find(l => l.type === "DEBIT");
+      const debitedAccountName = debitedLine?.accountHead?.name || "N/A";
+
       return {
         id: line.id,
         date: line.journalEntry.date,
         voucherNo: line.journalEntry.voucherNo,
         category: line.journalEntry.category,
         narration: line.journalEntry.narration,
-        accountName: line.accountHead.name,
+        accountName: contraAccountName,
+        debitedAccountName: debitedAccountName,
         debit: !isCredit ? amount : 0,
         credit: isCredit ? amount : 0,
         balance: runningBalance,

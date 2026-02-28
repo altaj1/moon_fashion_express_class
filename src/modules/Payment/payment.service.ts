@@ -20,17 +20,21 @@ export class PaymentService {
         if (!supplier) throw new Error("Supplier not found");
 
         // 2. Identify Account Heads
-        // A real system links these explicitly in settings. We will look them up by name/type.
-        const payableAccount = await this.prisma.accountHead.findFirst({
-            where: { name: { contains: "Accounts Payable" }, type: "LIABILITY", isDeleted: false }
-        });
-
-        if (!payableAccount) throw new Error("System Error: 'Accounts Payable' account head not found");
+        let payableAccountId = data.payableAccountId;
+        if (!payableAccountId) {
+            const payableAccount = await this.prisma.accountHead.findFirst({
+                where: { name: { contains: "Accounts Payable" }, type: "LIABILITY", isDeleted: false }
+            });
+            if (!payableAccount) throw new Error("System Error: 'Accounts Payable' account head not found");
+            payableAccountId = payableAccount.id;
+        }
 
         let bankIdForLine: string | undefined;
         let assetAccountId: string;
 
-        if (data.paymentMethod === "CASH") {
+        if (data.assetAccountId) {
+            assetAccountId = data.assetAccountId;
+        } else if (data.paymentMethod === "CASH") {
             const cashAccount = await this.prisma.accountHead.findFirst({
                 where: { name: { contains: "Cash" }, type: "ASSET", isDeleted: false }
             });
@@ -64,7 +68,7 @@ export class PaymentService {
             userId: userId,
             lines: [
                 {
-                    accountHeadId: payableAccount.id,
+                    accountHeadId: payableAccountId,
                     type: "DEBIT", // Reducing liability
                     amount: data.amount
                 },

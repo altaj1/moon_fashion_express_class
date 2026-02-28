@@ -20,16 +20,21 @@ export class ReceiptService {
         if (!buyer) throw new Error("Buyer not found");
 
         // 2. Identify Account Heads
-        const receivableAccount = await this.prisma.accountHead.findFirst({
-            where: { name: { contains: "Accounts Receivable" }, type: "ASSET", isDeleted: false }
-        });
-
-        if (!receivableAccount) throw new Error("System Error: 'Accounts Receivable' account head not found");
+        let receivableAccountId = data.receivableAccountId;
+        if (!receivableAccountId) {
+            const receivableAccount = await this.prisma.accountHead.findFirst({
+                where: { name: { contains: "Accounts Receivable" }, type: "ASSET", isDeleted: false }
+            });
+            if (!receivableAccount) throw new Error("System Error: 'Accounts Receivable' account head not found");
+            receivableAccountId = receivableAccount.id;
+        }
 
         let bankIdForLine: string | undefined;
         let assetAccountId: string;
 
-        if (data.paymentMethod === "CASH") {
+        if (data.assetAccountId) {
+            assetAccountId = data.assetAccountId;
+        } else if (data.paymentMethod === "CASH") {
             const cashAccount = await this.prisma.accountHead.findFirst({
                 where: { name: { contains: "Cash" }, type: "ASSET", isDeleted: false }
             });
@@ -67,7 +72,7 @@ export class ReceiptService {
                     bankId: bankIdForLine,
                 },
                 {
-                    accountHeadId: receivableAccount.id,
+                    accountHeadId: receivableAccountId,
                     type: "CREDIT", // Reducing asset (Receivable)
                     amount: data.amount
                 }

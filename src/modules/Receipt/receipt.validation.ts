@@ -19,7 +19,9 @@ export const ReceiptValidation = {
             referenceId: z.string().optional(), // Check number, transaction ID, etc.
             remarks: z.string().optional(),
 
-            // The bank/cash account receiving the money
+            // The bank/cash account receiving the money (Optional override)
+            assetAccountId: z.string().uuid("Invalid asset account ID").optional(),
+            receivableAccountId: z.string().uuid("Invalid receivable account ID").optional(),
             bankAccountId: z.string().uuid("Invalid bank account ID").optional(),
         })
         .strict()
