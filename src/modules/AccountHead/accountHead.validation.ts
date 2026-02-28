@@ -15,7 +15,6 @@ export const AccountHeadValidation = {
         .uuid("Invalid company profile ID")
         .optional(),
       isDeleted: z.boolean().optional(),
-      openingBalance: z.number().optional(),
     })
     .strict(),
 
@@ -34,7 +33,6 @@ export const AccountHeadValidation = {
         .optional(),
       description: z.string().max(500).optional(),
       isDeleted: z.boolean().optional(),
-      openingBalance: z.number().optional(),
     })
     .strict(),
 

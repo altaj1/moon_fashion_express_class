@@ -74,7 +74,6 @@ export class AccountHeadService extends BaseService<
         name: data.name,
         code: data.code,
         description: data.description,
-        openingBalance: data.openingBalance,
         parentId: data.parentId,
         isControlAccount: data.isControlAccount,
       },
