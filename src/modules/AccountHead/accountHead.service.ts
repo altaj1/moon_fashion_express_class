@@ -30,6 +30,11 @@ export class AccountHeadService extends BaseService<
   // =========================================================================
 
   public async create(data: CreateAccountHeadInput, include?: any) {
+    // Sanitize code
+    if (data.code === "") {
+      data.code = undefined;
+    }
+
     // Hierarchical Integrity Check
     if (data.parentId) {
       const parent = await this.prisma.accountHead.findUnique({
@@ -68,17 +73,19 @@ export class AccountHeadService extends BaseService<
     data: UpdateAccountHeadInput,
     include?: any,
   ) {
-    return super.updateById(
-      id,
-      {
-        name: data.name,
-        code: data.code,
-        description: data.description,
-        parentId: data.parentId,
-        isControlAccount: data.isControlAccount,
-      },
-      include,
-    );
+    // Sanitize code
+    const updateData: any = {
+      name: data.name,
+      description: data.description,
+      parentId: data.parentId,
+      isControlAccount: data.isControlAccount,
+    };
+
+    if (data.code !== undefined) {
+      updateData.code = data.code === "" ? null : data.code;
+    }
+
+    return super.updateById(id, updateData, include);
   }
 
   public async updateByAdmin(
@@ -105,6 +112,11 @@ export class AccountHeadService extends BaseService<
         throw new Error(`Architectural Mismatch: Cannot move a ${targetType} account under a ${parent.type} parent.`);
       }
     }
+    // Sanitize code
+    if (data.code === "") {
+      data.code = undefined;
+    }
+
     return super.updateById(id, data, include);
   }
 
