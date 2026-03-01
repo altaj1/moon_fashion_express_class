@@ -11,11 +11,15 @@ export class MoiCashBookController extends BaseController {
   /**
    * Create a new MoiCashBook
    */
-  public create = async (req: Request, res: Response) => {
+  public create = async (req: any, res: Response) => {
     const body = req.validatedBody;
+    const userId = (req as any).userId;
     this.logAction("create", req, { body });
 
-    const result = await this.service.create(body);
+    const result = await this.service.create({
+      ...body,
+      createdById: userId,
+    });
 
     return this.sendCreatedResponse(
       res,

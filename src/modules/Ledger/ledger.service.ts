@@ -332,7 +332,18 @@ export class LedgerService {
       return acc + (line.type === "CREDIT" ? amount : -amount);
     }, 0);
 
-    // 3. Cash & Bank Balance
+    // 3. Total Staff Advances (Receivables from employees)
+    const staffAdvanceLines = await this.prisma.moiCashBook.findMany({
+      where: { status: { in: ["APPROVED", "SETTLED"] } },
+      select: { type: true, amount: true },
+    });
+
+    const totalStaffAdvances = staffAdvanceLines.reduce((acc, line) => {
+      const amount = Number(line.amount);
+      return acc + (line.type === "ISSUE" ? amount : -amount);
+    }, 0);
+
+    // 4. Cash & Bank Balance
     const assetAccounts = await this.prisma.accountHead.findMany({
       where: {
         type: "ASSET",
@@ -362,8 +373,9 @@ export class LedgerService {
     return {
       totalReceivables,
       totalPayables,
+      totalStaffAdvances,
       cashAndBankBalance,
-      totalAssets: cashAndBankBalance + totalReceivables,
+      totalAssets: cashAndBankBalance + totalReceivables + totalStaffAdvances,
       totalLiabilities: totalPayables,
     };
   }

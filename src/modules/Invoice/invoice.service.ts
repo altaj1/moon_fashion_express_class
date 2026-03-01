@@ -75,15 +75,20 @@ export class InvoiceService extends BaseService<
       };
 
       const result = await super.create(prismaData, include);
+      
+      // Update order and fetch detailed info for journal calculation
       const updateOrderIsInvoice = await prisma.order.update({
-        where: {
-          id: orderId,
-        },
-        data: {
-          isInvoice: true,
-        },
+        where: { id: orderId },
+        data: { isInvoice: true },
         include: {
-          buyer: true
+          buyer: true,
+          orderItems: {
+            include: {
+              fabricItem: true,
+              labelItem: true,
+              cartonItem: true,
+            }
+          }
         }
       });
 
@@ -92,44 +97,54 @@ export class InvoiceService extends BaseService<
       // =========================================================
       if (this.journalService && updateOrderIsInvoice.buyer) {
         try {
-          // Find standard account heads for Accounts Receivable and Sales Revenue
-          // In a real system, these would be linked via SystemSettings or fetched by control account type
-          const arAccount = await prisma.accountHead.findFirst({
-            where: { name: { contains: "Accounts Receivable" }, isDeleted: false }
-          });
-          const salesAccount = await prisma.accountHead.findFirst({
-            where: { name: { contains: "Sales Revenue" }, isDeleted: false }
+          // Calculate Total value from items
+          let totalAmount = 0;
+          updateOrderIsInvoice.orderItems.forEach((item: any) => {
+            totalAmount += Number(item.fabricItem?.totalAmount || 0);
+            totalAmount += Number(item.labelItem?.totalAmount || 0);
+            totalAmount += Number(item.cartonItem?.totalAmount || 0);
           });
 
-          if (arAccount && salesAccount) {
-            // Note: In a real system, we'd need the grand total here. 
-            // For now, we're assuming the total amount is available or calculated.
-            // Since Invoice creation doesn't explicitly send "totalAmount", 
-            // we will create a DRAFT entry with 0 amount to be filled/posted later,
-            // OR we'd calculate it from order items. We'll set it to 0 for DRAFT.
+          // Find standard account heads for Accounts Receivable and Sales Revenue
+          const arAccount = await prisma.accountHead.findFirst({
+            where: { 
+              name: { contains: "Accounts Receivable", mode: "insensitive" }, 
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
+              isDeleted: false 
+            }
+          });
+          const salesAccount = await prisma.accountHead.findFirst({
+            where: { 
+              name: { contains: "Sales Revenue", mode: "insensitive" }, 
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
+              isDeleted: false 
+            }
+          });
+
+          if (arAccount && salesAccount && totalAmount > 0) {
             await this.journalService.createDraft({
               date: result.date,
               category: "BUYER_DUE",
               narration: `Invoice PI-${result.piNumber} created for ${updateOrderIsInvoice.buyer.name}`,
               buyerId: updateOrderIsInvoice.buyer.id,
               userId: userId,
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
               lines: [
                 {
                   accountHeadId: arAccount.id,
-                  type: "DEBIT",
-                  amount: 0 // Will be finalized before posting
+                  type: "DEBIT", // Buyer owes us money
+                  amount: totalAmount
                 },
                 {
                   accountHeadId: salesAccount.id,
-                  type: "CREDIT",
-                  amount: 0 // Will be finalized before posting
+                  type: "CREDIT", // We earned revenue
+                  amount: totalAmount
                 }
               ]
             } as any);
           }
         } catch (journalErr) {
           console.error("Failed to auto-create journal entry for invoice:", journalErr);
-          // Non-blocking error, we still return the invoice result
         }
       }
 

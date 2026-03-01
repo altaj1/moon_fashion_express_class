@@ -686,13 +686,17 @@ model MoiCashBook {
   employeeId      String         @db.Uuid
   employee        User           @relation("EmployeeIOU", fields: [employeeId], references: [id])
 
+  // Multi-entity support
+  companyProfileId String         @db.Uuid
+  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+
   // Tracking the lifecycle
   type            AdvanceType    @default(ISSUE) // ISSUE (Cash out) or SETTLE (Return/Adjustment)
   status          AdvanceStatus  @default(PENDING)
 
   // Link to your main Accounting Ledger
-journalEntryId  String?        @db.Uuid @unique
-journalEntry    JournalEntry?  @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
+  journalEntryId  String?        @db.Uuid @unique
+  journalEntry    JournalEntry?  @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
 
   // Metadata
   remarks         String?

@@ -7,7 +7,6 @@ export const MoiCashBookValidation = {
   create: z
     .object({
       voucherNo: z.string().min(1, "Voucher number is required"),
-      // amount is Decimal in Prisma, so we accept number or string and refine
       amount: z
         .union([z.number().positive(), z.string()])
         .transform((val) => Number(val)),
@@ -16,12 +15,20 @@ export const MoiCashBookValidation = {
         .min(3, "Purpose must be at least 3 characters")
         .max(255),
       employeeId: z.string().uuid("Invalid Employee ID format"),
+      companyProfileId: z.string().uuid("Company Profile ID is required"),
+      
+      // Accounting Links
+      cashAccountId: z.string().uuid().optional(),    // Where cash leaves/enters
+      advanceAccountId: z.string().uuid().optional(), // The "Staff Advance" control account
+      expenseAccountId: z.string().uuid().optional(), // For SETTLE type with expenses
+      
       type: z.enum(["ISSUE", "SETTLE", "EXPENSE"]).default("ISSUE"),
       status: z
         .enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"])
         .default("PENDING"),
       remarks: z.string().max(500).optional(),
       journalEntryId: z.string().uuid().optional(),
+      autoPost: z.boolean().default(true), // Automatically post the journal entry
     })
     .strict(),
 

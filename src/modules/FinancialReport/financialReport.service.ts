@@ -135,4 +135,5 @@ export class FinancialReportService {
             generatedAt: new Date().toISOString(),
         };
     }
+
 }
