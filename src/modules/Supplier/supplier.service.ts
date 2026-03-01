@@ -28,6 +28,7 @@ export class SupplierService extends BaseService<
   // =========================================================================
 
   public async create(data: CreateSupplierInput, include?: any) {
+    console.log("Supplier not found not found", JSON.stringify(data));
     return super.create(data, include);
   }
 

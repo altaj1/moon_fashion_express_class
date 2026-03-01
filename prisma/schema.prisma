@@ -59,16 +59,16 @@ model User {
   isDeleted         Boolean           @default(false)
   lastLoginAt       DateTime?
 
-  otps           OTP[]
-  invoices       Invoice[]
-  orders         Order[]
-  lcManagement   LCManagement[]
-  suppliers      Supplier[]
-  journalEntries JournalEntry[]
-  employeeAdvances MoiCashBook[] @relation("EmployeeIOU")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  otps             OTP[]
+  invoices         Invoice[]
+  orders           Order[]
+  lcManagement     LCManagement[]
+  suppliers        Supplier[]
+  journalEntries   JournalEntry[]
+  employeeAdvances MoiCashBook[]  @relation("EmployeeIOU")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
 
   @@index([email])
   @@index([username])
@@ -394,6 +394,7 @@ model CompanyProfile {
   journalEntries JournalEntry[]
   loans          Loan[]
   banks          Bank[]
+  moiCashBooks   MoiCashBook[]
 }
 
 // ================= BANK =================
@@ -580,8 +581,8 @@ model JournalEntry {
   createdById String? @db.Uuid
   createdBy   User?   @relation(fields: [createdById], references: [id])
 
-  lines JournalLine[]
-advances MoiCashBook[] @relation("AdvanceJournal")
+  lines    JournalLine[]
+  advances MoiCashBook[] @relation("AdvanceJournal")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -671,45 +672,44 @@ model LoanRepayment {
   @@map("loan_repayments")
 }
 
-
 // ==========================================
 // PETTY CASH & EMPLOYEE ADVANCE (IOU)
 // ==========================================
 
 model MoiCashBook {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  voucherNo       String         @unique // e.g., PC-2026-001
-  amount          Decimal        @db.Decimal(20, 2)
-  purpose         String         // e.g., "Office Stationery" or "Travel Advance"
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  voucherNo String  @unique // e.g., PC-2026-001
+  amount    Decimal @db.Decimal(20, 2)
+  purpose   String // e.g., "Office Stationery" or "Travel Advance"
 
   // The person receiving the cash
-  employeeId      String         @db.Uuid
-  employee        User           @relation("EmployeeIOU", fields: [employeeId], references: [id])
+  employeeId String @db.Uuid
+  employee   User   @relation("EmployeeIOU", fields: [employeeId], references: [id])
 
   // Multi-entity support
   companyProfileId String         @db.Uuid
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
 
   // Tracking the lifecycle
-  type            AdvanceType    @default(ISSUE) // ISSUE (Cash out) or SETTLE (Return/Adjustment)
-  status          AdvanceStatus  @default(PENDING)
+  type   AdvanceType   @default(ISSUE) // ISSUE (Cash out) or SETTLE (Return/Adjustment)
+  status AdvanceStatus @default(PENDING)
 
   // Link to your main Accounting Ledger
-  journalEntryId  String?        @db.Uuid @unique
-  journalEntry    JournalEntry?  @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
+  journalEntryId String?       @unique @db.Uuid
+  journalEntry   JournalEntry? @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
 
   // Metadata
-  remarks         String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("employee_advances")
 }
 
 enum AdvanceType {
-  ISSUE    // Giving cash to employee
-  SETTLE   // Employee returning cash OR adjusting against an expense bill
-  EXPENSE  // Direct office expense (not an IOU)
+  ISSUE // Giving cash to employee
+  SETTLE // Employee returning cash OR adjusting against an expense bill
+  EXPENSE // Direct office expense (not an IOU)
 }
 
 enum AdvanceStatus {

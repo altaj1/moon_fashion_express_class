@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BaseController } from "@/core/BaseController";
 import { SupplierService } from "./supplier.service";
 import { HTTPStatusCode } from "@/types/HTTPStatusCode";
+import { prisma } from "@/lib/prisma";
 
 export class SupplierController extends BaseController {
   constructor(private service: SupplierService) {
@@ -14,7 +15,13 @@ export class SupplierController extends BaseController {
   public create = async (req: Request, res: Response) => {
     const body = req.validatedBody;
     const userId = req.userId;
-
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: { id: userId },
+    });
+    if (!existingUser) {
+      return this.sendResponse(res, "User not found", HTTPStatusCode.NOT_FOUND);
+    }
     this.logAction("create", req, { body, userId });
 
     const result = await this.service.create({

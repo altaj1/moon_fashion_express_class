@@ -38,8 +38,7 @@ export class CompanyProfileService extends BaseService<
       logoUrl?.path || "",
       "company_profiles",
     );
-    // logoUrl: uploadedLogoUrl?.secure_url
-    return super.create({ ...data });
+    return super.create({ ...data, logoUrl: uploadedLogoUrl?.secure_url });
   }
 
   public async findMany(
