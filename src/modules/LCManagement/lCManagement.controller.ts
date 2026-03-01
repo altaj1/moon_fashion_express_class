@@ -40,8 +40,11 @@ export class LCManagementController extends BaseController {
       endDate,
       minAmount,
       maxAmount,
+      expiryStartDate,
+      expiryEndDate,
       sortBy = "createdAt",
       sortOrder = "desc",
+      isDeleted,
     } = query;
 
     const filters: any = {};
@@ -56,18 +59,32 @@ export class LCManagementController extends BaseController {
       ];
     }
 
-    // 📅 Date Range Filter (issueDate)
+    // Date Range Filter (issueDate)
     if (startDate || endDate) {
       filters.issueDate = {};
       if (startDate) filters.issueDate.gte = new Date(startDate as string);
       if (endDate) filters.issueDate.lte = new Date(endDate as string);
     }
 
-    // 💰 Amount Range Filter
+    // Date Range Filter (expiryDate)
+    if (expiryStartDate || expiryEndDate) {
+      filters.expiryDate = {};
+      if (expiryStartDate)
+        filters.expiryDate.gte = new Date(expiryStartDate as string);
+      if (expiryEndDate)
+        filters.expiryDate.lte = new Date(expiryEndDate as string);
+    }
+
+    // Amount Range Filter
     if (minAmount || maxAmount) {
       filters.amount = {};
       if (minAmount) filters.amount.gte = Number(minAmount);
       if (maxAmount) filters.amount.lte = Number(maxAmount);
+    }
+    if (isDeleted) {
+      filters.isDeleted = isDeleted;
+    } else {
+      filters.isDeleted = false;
     }
 
     const result = await this.service.findMany(

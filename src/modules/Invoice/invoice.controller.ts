@@ -41,6 +41,7 @@ export class InvoiceController extends BaseController {
       sortBy = "createdAt",
       sortOrder = "desc",
       productType,
+      isDeleted,
     } = query;
 
     // Build filters
@@ -72,7 +73,11 @@ export class InvoiceController extends BaseController {
       if (startDate) filters.date.gte = new Date(startDate as string);
       if (endDate) filters.date.lte = new Date(endDate as string);
     }
-
+    if (isDeleted) {
+      filters.isDeleted = isDeleted;
+    } else {
+      filters.isDeleted = false;
+    }
     // Call service
     const result = await this.service.findMany({
       ...filters,

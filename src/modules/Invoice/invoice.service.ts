@@ -5,13 +5,14 @@ import { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation";
 import { AppError } from "@/core/errors/AppError";
+import { JournalEntryService } from "../JournalEntry/journalEntry.service";
 
 export class InvoiceService extends BaseService<
   any,
   CreateInvoiceInput,
   UpdateInvoiceInput
 > {
-  constructor() {
+  constructor(private journalService?: JournalEntryService) {
     super(prisma, "Invoice", {
       enableSoftDelete: false,
       enableAuditFields: true,
@@ -73,15 +74,80 @@ export class InvoiceService extends BaseService<
         ...(status && { status }),
       };
 
-      const result = super.create(prismaData, include);
+      const result = await super.create(prismaData, include);
+      
+      // Update order and fetch detailed info for journal calculation
       const updateOrderIsInvoice = await prisma.order.update({
-        where: {
-          id: orderId,
-        },
-        data: {
-          isInvoice: true,
-        },
+        where: { id: orderId },
+        data: { isInvoice: true },
+        include: {
+          buyer: true,
+          orderItems: {
+            include: {
+              fabricItem: true,
+              labelItem: true,
+              cartonItem: true,
+            }
+          }
+        }
       });
+
+      // =========================================================
+      // Auto-create Journal Entry (Buyer Due)
+      // =========================================================
+      if (this.journalService && updateOrderIsInvoice.buyer) {
+        try {
+          // Calculate Total value from items
+          let totalAmount = 0;
+          updateOrderIsInvoice.orderItems.forEach((item: any) => {
+            totalAmount += Number(item.fabricItem?.totalAmount || 0);
+            totalAmount += Number(item.labelItem?.totalAmount || 0);
+            totalAmount += Number(item.cartonItem?.totalAmount || 0);
+          });
+
+          // Find standard account heads for Accounts Receivable and Sales Revenue
+          const arAccount = await prisma.accountHead.findFirst({
+            where: { 
+              name: { contains: "Accounts Receivable", mode: "insensitive" }, 
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
+              isDeleted: false 
+            }
+          });
+          const salesAccount = await prisma.accountHead.findFirst({
+            where: { 
+              name: { contains: "Sales Revenue", mode: "insensitive" }, 
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
+              isDeleted: false 
+            }
+          });
+
+          if (arAccount && salesAccount && totalAmount > 0) {
+            await this.journalService.createDraft({
+              date: result.date,
+              category: "BUYER_DUE",
+              narration: `Invoice PI-${result.piNumber} created for ${updateOrderIsInvoice.buyer.name}`,
+              buyerId: updateOrderIsInvoice.buyer.id,
+              userId: userId,
+              companyProfileId: updateOrderIsInvoice.companyProfileId,
+              lines: [
+                {
+                  accountHeadId: arAccount.id,
+                  type: "DEBIT", // Buyer owes us money
+                  amount: totalAmount
+                },
+                {
+                  accountHeadId: salesAccount.id,
+                  type: "CREDIT", // We earned revenue
+                  amount: totalAmount
+                }
+              ]
+            } as any);
+          }
+        } catch (journalErr) {
+          console.error("Failed to auto-create journal entry for invoice:", journalErr);
+        }
+      }
+
       return result;
     } catch (err: any) {
       console.error("Invoice creation failed:", err);

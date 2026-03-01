@@ -15,9 +15,9 @@ export class UserController extends BaseController {
   public getAll = async (req: Request, res: Response) => {
     const query = req.validatedQuery;
     const pagination = this.extractPaginationParams(req);
-    const { sortBy, sortOrder, search, isDeleted } = query;
+    const { sortBy, sortOrder, search, isDeleted, role } = query;
     const filters: any = { isDeleted };
-
+    console.log({ query });
     if (search) {
       filters.OR = [
         { firstName: { contains: search, mode: "insensitive" } },
@@ -31,6 +31,10 @@ export class UserController extends BaseController {
     const orderBy = {
       [sortBy]: sortOrder,
     };
+
+    if (role) {
+      filters.role = role;
+    }
 
     const result = await this.service.findMany(filters, pagination, orderBy);
 
@@ -49,32 +53,21 @@ export class UserController extends BaseController {
     );
   };
 
-  /**
-   * Search Users
-   */
-  // public search = async (req: Request, res: Response) => {
-  //   const { q, search, limit } = req.validatedQuery;
+  public analytics = async (req: Request, res: Response) => {
+    const query = req.validatedQuery;
+    const { startDate, endDate } = query;
+    const result = await this.service.analytics(
+      startDate as string,
+      endDate as string,
+    );
 
-  //   const keyword = q || search;
-
-  //   const filters = {
-  //     OR: [
-  //       { firstName: { contains: keyword, mode: "insensitive" } },
-  //       { lastName: { contains: keyword, mode: "insensitive" } },
-  //       { email: { contains: keyword, mode: "insensitive" } },
-  //     ],
-  //   };
-
-  //   const result = await this.service.findMany(filters, { page: 1, limit });
-
-  //   return this.sendResponse(
-  //     res,
-  //     "Search result",
-  //     HTTPStatusCode.OK,
-  //     result.data,
-  //   );
-  // };
-
+    return this.sendResponse(
+      res,
+      "User analytics retrieved successfully",
+      HTTPStatusCode.OK,
+      result,
+    );
+  };
   /**
    * Get single User
    */
@@ -179,7 +172,7 @@ export class UserController extends BaseController {
 
     await this.service.softDelete({
       id,
-      isDeleted: body?.isDeleted ?? true,
+      isDeleted: body?.isDeleted,
     });
 
     return this.sendResponse(

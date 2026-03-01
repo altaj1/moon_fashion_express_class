@@ -10,6 +10,17 @@ import { UserModule } from "./modules/User/UserModule";
 import { CompanyProfileModule } from "./modules/CompanyProfile/CompanyProfileModule";
 import { OrderModule } from "./modules/Order/OrderModule";
 import { LCManagementModule } from "./modules/LCManagement/LCManagementModule";
+import { SupplierModule } from "./modules/Supplier/SupplierModule";
+import { JournalEntryModule } from "./modules/JournalEntry/JournalEntryModule";
+import { AccountHeadModule } from "./modules/AccountHead/AccountHeadModule";
+import { BankModule } from "./modules/Bank/BankModule";
+import { LoanModule } from "./modules/Loan/LoanModule";
+import { LedgerModule } from "./modules/Ledger/LedgerModule";
+import { PaymentModule } from "./modules/Payment/PaymentModule";
+import { ReceiptModule } from "./modules/Receipt/ReceiptModule";
+import { AnalyticsModule } from "./modules/Analytics/AnalyticsModule";
+import { MoiCashBookModule } from "./modules/MoiCashBook/MoiCashBookModule";
+import { FinancialReportModule } from "./modules/FinancialReport/FinancialReportModule";
 // Main application bootstrap function
 async function bootstrap() {
   try {
@@ -29,6 +40,17 @@ async function bootstrap() {
     app.registerModule(new CompanyProfileModule());
     app.registerModule(new OrderModule());
     app.registerModule(new LCManagementModule());
+    app.registerModule(new SupplierModule());
+    app.registerModule(new JournalEntryModule());
+    app.registerModule(new AccountHeadModule());
+    app.registerModule(new BankModule());
+    app.registerModule(new LoanModule());
+    app.registerModule(new LedgerModule());
+    app.registerModule(new PaymentModule());
+    app.registerModule(new ReceiptModule());
+    app.registerModule(new AnalyticsModule());
+    app.registerModule(new MoiCashBookModule());
+    app.registerModule(new FinancialReportModule());
     AppLogger.info("✔ All modules registered successfully");
 
     // Start the server

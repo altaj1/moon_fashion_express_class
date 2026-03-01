@@ -14,6 +14,7 @@ const moduleEnum = z.enum([
   "invoiceTerms",
   "piManagement",
   "lcManagement",
+  "suppliers",
 ]);
 
 // Password validation with security requirements
@@ -68,18 +69,21 @@ export const AuthValidation = {
       avatarUrl: z.string().url("Invalid URL format").optional(),
     })
     .strict()
-    .refine((data) => {
-      if (data.password && data.confirmPassword) {
-        return data.password === data.confirmPassword;
-      }
-      if (data.password && !data.confirmPassword) {
-        return false;
-      }
-      return true;
-    }, {
-      message: "Passwords do not match",
-      path: ["confirmPassword"],
-    })
+    .refine(
+      (data) => {
+        if (data.password && data.confirmPassword) {
+          return data.password === data.confirmPassword;
+        }
+        if (data.password && !data.confirmPassword) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+      },
+    )
     .transform((data) => {
       const { confirmPassword, ...rest } = data;
       return rest;
@@ -116,10 +120,15 @@ export const AuthValidation = {
       confirmNewPassword: z.string().optional(),
     })
     .strict()
-    .refine((data) => !data.confirmNewPassword || data.newPassword === data.confirmNewPassword, {
-      message: "New passwords do not match",
-      path: ["confirmNewPassword"],
-    })
+    .refine(
+      (data) =>
+        !data.confirmNewPassword ||
+        data.newPassword === data.confirmNewPassword,
+      {
+        message: "New passwords do not match",
+        path: ["confirmNewPassword"],
+      },
+    )
     .refine((data) => data.currentPassword !== data.newPassword, {
       message: "New password must be different from current password",
       path: ["newPassword"],

@@ -88,10 +88,18 @@ export const InvoiceTermsValidation = {
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
       isDeleted: z.preprocess((val) => {
-        if (val === "true") return true;
-        if (val === "false") return false;
+        if (val === "true") {
+          console.log("Preprocessing isDeleted: converting 'true' to true");
+          return true;
+        }
+        if (val === "false") {
+          console.log("Preprocessing isDeleted: converting 'false' to false");
+          return false;
+        }
         return false;
       }, z.boolean().default(false)),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
     }),
 
     search: z

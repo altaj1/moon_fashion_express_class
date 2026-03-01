@@ -36,6 +36,9 @@ export class CompanyProfileController extends BaseController {
       sortOrder = "desc",
       companyType,
       status,
+      startDate,
+      endDate,
+      isDeleted,
     } = query;
 
     const filters: any = {};
@@ -65,6 +68,18 @@ export class CompanyProfileController extends BaseController {
       [sortBy]: sortOrder,
     };
 
+    // Date Range Filter (issueDate)
+    if (startDate || endDate) {
+      filters.deliveryDate = {};
+      if (startDate) filters.deliveryDate.gte = new Date(startDate as string);
+      if (endDate) filters.deliveryDate.lte = new Date(endDate as string);
+    }
+
+    if (isDeleted) {
+      filters.isDeleted = isDeleted;
+    } else {
+      filters.isDeleted = false;
+    }
     const result = await this.service.findMany(filters, pagination, orderBy);
 
     return this.sendPaginatedResponse(

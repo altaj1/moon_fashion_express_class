@@ -203,6 +203,10 @@ export const OrderValidation = {
         .enum(["orderNumber", "orderDate", "createdAt"])
         .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      deliveryDateFrom: z.string().optional(),
+      deliveryDateTo: z.string().optional(),
     }),
   },
 };

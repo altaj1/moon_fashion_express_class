@@ -29,6 +29,38 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     return super.findMany(filters, pagination, orderBy, include);
   }
 
+  public async analytics(startDate?: string, endDate?: string) {
+    const where: any = {};
+
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        createdAt: true,
+      },
+    });
+
+    // Group by date manually
+    const grouped: Record<string, number> = {};
+
+    users.forEach((user) => {
+      const date = user.createdAt.toISOString().split("T")[0];
+
+      grouped[date] = (grouped[date] || 0) + 1;
+    });
+
+    return Object.entries(grouped).map(([date, count]) => ({
+      date,
+      count,
+    }));
+  }
+
   public async findById(id: string, include?: any) {
     return super.findById(id, include);
   }
@@ -61,7 +93,8 @@ export class UserService extends BaseService<any, UpdateUserInput> {
     if (data.firstName !== undefined) updateData.firstName = data.firstName;
     if (data.lastName !== undefined) updateData.lastName = data.lastName;
     if (data.username !== undefined) updateData.username = data.username;
-    if (data.designation !== undefined) updateData.designation = data.designation;
+    if (data.designation !== undefined)
+      updateData.designation = data.designation;
     if (data.role !== undefined) updateData.role = data.role;
     if (data.modules !== undefined) updateData.modules = data.modules;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
@@ -111,9 +144,9 @@ export class UserService extends BaseService<any, UpdateUserInput> {
 
   public async softDelete(data: any): Promise<any> {
     const { id, isDeleted } = data;
+    console.log({ isDeleted });
     return super.updateById(id, {
-      isDeleted,
-      deletedAt: isDeleted ? new Date() : null,
+      isDeleted: isDeleted,
     });
   }
 
