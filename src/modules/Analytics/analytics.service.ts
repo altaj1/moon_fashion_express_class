@@ -139,39 +139,59 @@ export class AnalyticsService extends BaseService<
   }
 
   // =====================================================
-  // ORDER TREND — daily order count for a period
+  // ORDER TREND — daily order count, supports date range
   // =====================================================
-  public async getOrderTrend(days = 30) {
+  public async getOrderTrend(startDate?: string, endDate?: string, days = 30) {
     const result: { date: string; orders: number }[] = [];
-    const now = new Date();
 
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+    let rangeStart: Date;
+    let rangeEnd: Date;
+
+    if (startDate && endDate) {
+      rangeStart = new Date(startDate);
+      rangeEnd = new Date(endDate);
+    } else {
+      rangeEnd = new Date();
+      rangeStart = new Date();
+      rangeStart.setDate(rangeEnd.getDate() - (days - 1));
+    }
+
+    // Build daily buckets between rangeStart and rangeEnd
+    const current = new Date(rangeStart);
+    while (current <= rangeEnd) {
+      const dayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 0, 0, 0);
+      const dayEnd = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59);
 
       const count = await this.prisma.order.count({
-        where: { orderDate: { gte: start, lte: end } },
+        where: { orderDate: { gte: dayStart, lte: dayEnd } },
       });
 
       result.push({
-        date: start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+        date: dayStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
         orders: count,
       });
+
+      current.setDate(current.getDate() + 1);
     }
-    // Only return data points where orders > 0 plus boundary points for chart shape
+
     return result;
   }
 
   // =====================================================
-  // TOP BUYERS — by revenue (sum of DEBIT journal lines)
+  // TOP BUYERS — by revenue, supports date range
   // =====================================================
-  public async getTopBuyers(limit = 5) {
+  public async getTopBuyers(limit = 5, startDate?: string, endDate?: string) {
     const buyers = await this.prisma.buyer.findMany({
       where: { isDeleted: false },
       select: { id: true, name: true },
     });
+
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      dateFilter.lte = new Date(endDate);
+    }
+    const hasDateFilter = startDate && endDate;
 
     const results: { name: string; revenue: number; orders: number }[] = [];
 
@@ -181,20 +201,63 @@ export class AnalyticsService extends BaseService<
           where: {
             buyerId: buyer.id,
             type: JournalEntryType.DEBIT,
-            journalEntry: { status: JournalEntryStatus.POSTED },
+            journalEntry: {
+              status: JournalEntryStatus.POSTED,
+              ...(hasDateFilter ? { date: dateFilter } : {}),
+            },
           },
           select: { amount: true },
         }),
-        this.prisma.order.count({ where: { buyerId: buyer.id } }),
+        this.prisma.order.count({
+          where: {
+            buyerId: buyer.id,
+            ...(hasDateFilter ? { orderDate: dateFilter } : {}),
+          },
+        }),
       ]);
 
-      const revenue = lines.reduce((sum, l) => sum + Number(l.amount), 0);
+      const revenue = lines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
       if (revenue > 0 || orderCount > 0) {
         results.push({ name: buyer.name, revenue, orders: orderCount });
       }
     }
 
     return results.sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+  }
+
+  // =====================================================
+  // PAYABLE FLOW — weekly AP amounts to suppliers
+  // =====================================================
+  public async getPayableFlow(weeks = 6) {
+    const result: { week: string; payable: number }[] = [];
+    const now = new Date();
+
+    for (let i = weeks - 1; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7 - 6);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      const weekLabel = `W${weeks - i}`;
+
+      // Supplier-linked credit journal lines = accounts payable
+      const apLines = await this.prisma.journalLine.findMany({
+        where: {
+          supplierId: { not: null },
+          type: JournalEntryType.CREDIT,
+          journalEntry: {
+            status: JournalEntryStatus.POSTED,
+            date: { gte: weekStart, lte: weekEnd },
+          },
+        },
+        select: { amount: true },
+      });
+
+      const payable = apLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      result.push({ week: weekLabel, payable: Math.round(payable) });
+    }
+    return result;
   }
 
   // =====================================================

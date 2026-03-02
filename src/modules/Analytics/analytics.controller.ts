@@ -31,17 +31,27 @@ export class AnalyticsController extends BaseController {
     return this.sendResponse(res, "Revenue trend retrieved", HTTPStatusCode.OK, result);
   };
 
-  /** Daily order count over last N days */
+  /** Daily order count — supports startDate/endDate or days param */
   getOrderTrend = async (req: Request, res: Response) => {
+    const { startDate, endDate } = req.query;
     const days = Number(req.query.days) || 30;
-    const result = await this.service.getOrderTrend(days);
+    const result = await this.service.getOrderTrend(
+      startDate as string | undefined,
+      endDate as string | undefined,
+      days,
+    );
     return this.sendResponse(res, "Order trend retrieved", HTTPStatusCode.OK, result);
   };
 
-  /** Top 5 buyers by revenue */
+  /** Top buyers by revenue — supports startDate/endDate filter */
   getTopBuyers = async (req: Request, res: Response) => {
     const limit = Number(req.query.limit) || 5;
-    const result = await this.service.getTopBuyers(limit);
+    const { startDate, endDate } = req.query;
+    const result = await this.service.getTopBuyers(
+      limit,
+      startDate as string | undefined,
+      endDate as string | undefined,
+    );
     return this.sendResponse(res, "Top buyers retrieved", HTTPStatusCode.OK, result);
   };
 
@@ -62,5 +72,12 @@ export class AnalyticsController extends BaseController {
   getDashboardAlerts = async (req: Request, res: Response) => {
     const result = await this.service.getDashboardAlerts();
     return this.sendResponse(res, "Alerts retrieved", HTTPStatusCode.OK, result);
+  };
+
+  /** Weekly accounts payable flow to suppliers */
+  getPayableFlow = async (req: Request, res: Response) => {
+    const weeks = Number(req.query.weeks) || 6;
+    const result = await this.service.getPayableFlow(weeks);
+    return this.sendResponse(res, "Payable flow retrieved", HTTPStatusCode.OK, result);
   };
 }
