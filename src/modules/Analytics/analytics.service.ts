@@ -100,6 +100,224 @@ export class AnalyticsService extends BaseService<
   }
 
   // =====================================================
+  // REVENUE TREND — last 12 months month by month
+  // =====================================================
+  public async getRevenueTrend() {
+    const months: { month: string; revenue: number; expense: number }[] = [];
+    const now = new Date();
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const label = start.toLocaleString("default", { month: "short", year: "2-digit" });
+
+      const [revLines, expLines] = await Promise.all([
+        this.prisma.journalLine.findMany({
+          where: {
+            accountHead: { type: AccountType.INCOME },
+            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+          },
+          select: { type: true, amount: true },
+        }),
+        this.prisma.journalLine.findMany({
+          where: {
+            accountHead: { type: AccountType.EXPENSE },
+            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+          },
+          select: { type: true, amount: true },
+        }),
+      ]);
+
+      months.push({
+        month: label,
+        revenue: Math.abs(this.calculateBalance(revLines)),
+        expense: Math.abs(this.calculateBalance(expLines)),
+      });
+    }
+    return months;
+  }
+
+  // =====================================================
+  // ORDER TREND — daily order count for a period
+  // =====================================================
+  public async getOrderTrend(days = 30) {
+    const result: { date: string; orders: number }[] = [];
+    const now = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+
+      const count = await this.prisma.order.count({
+        where: { orderDate: { gte: start, lte: end } },
+      });
+
+      result.push({
+        date: start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+        orders: count,
+      });
+    }
+    // Only return data points where orders > 0 plus boundary points for chart shape
+    return result;
+  }
+
+  // =====================================================
+  // TOP BUYERS — by revenue (sum of DEBIT journal lines)
+  // =====================================================
+  public async getTopBuyers(limit = 5) {
+    const buyers = await this.prisma.buyer.findMany({
+      where: { isDeleted: false },
+      select: { id: true, name: true },
+    });
+
+    const results: { name: string; revenue: number; orders: number }[] = [];
+
+    for (const buyer of buyers) {
+      const [lines, orderCount] = await Promise.all([
+        this.prisma.journalLine.findMany({
+          where: {
+            buyerId: buyer.id,
+            type: JournalEntryType.DEBIT,
+            journalEntry: { status: JournalEntryStatus.POSTED },
+          },
+          select: { amount: true },
+        }),
+        this.prisma.order.count({ where: { buyerId: buyer.id } }),
+      ]);
+
+      const revenue = lines.reduce((sum, l) => sum + Number(l.amount), 0);
+      if (revenue > 0 || orderCount > 0) {
+        results.push({ name: buyer.name, revenue, orders: orderCount });
+      }
+    }
+
+    return results.sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+  }
+
+  // =====================================================
+  // AR AGING — receivables bucketed by overdue days
+  // =====================================================
+  public async getARaging() {
+    const entries = await this.prisma.journalEntry.findMany({
+      where: {
+        buyerId: { not: null },
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+      },
+      include: { lines: { select: { type: true, amount: true } } },
+    });
+
+    const buckets = [
+      { label: "0–30 days", min: 0, max: 30, amount: 0 },
+      { label: "31–60 days", min: 31, max: 60, amount: 0 },
+      { label: "61–90 days", min: 61, max: 90, amount: 0 },
+      { label: "90+ days", min: 91, max: Infinity, amount: 0 },
+    ];
+
+    const now = new Date();
+    entries.forEach((entry) => {
+      const ageDays = Math.floor((now.getTime() - new Date(entry.createdAt).getTime()) / 86400000);
+      const net = entry.lines.reduce((sum, l) =>
+        l.type === JournalEntryType.DEBIT ? sum + Number(l.amount) : sum - Number(l.amount), 0);
+      if (net <= 0) return; // Fully paid, skip
+      const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max);
+      if (bucket) bucket.amount += net;
+    });
+
+    return buckets.map(b => ({ label: b.label, amount: Math.round(b.amount) }));
+  }
+
+  // =====================================================
+  // CASH FLOW — 6 weekly inflow vs outflow buckets
+  // =====================================================
+  public async getCashFlow(weeks = 6) {
+    const result: { week: string; inflow: number; outflow: number }[] = [];
+    const now = new Date();
+
+    for (let i = weeks - 1; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7 - 6);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      const weekLabel = `W${weeks - i}`;
+
+      const [debitLines, creditLines] = await Promise.all([
+        this.prisma.journalLine.findMany({
+          where: {
+            type: JournalEntryType.DEBIT,
+            journalEntry: {
+              status: JournalEntryStatus.POSTED,
+              date: { gte: weekStart, lte: weekEnd },
+            },
+          },
+          select: { amount: true },
+        }),
+        this.prisma.journalLine.findMany({
+          where: {
+            type: JournalEntryType.CREDIT,
+            journalEntry: {
+              status: JournalEntryStatus.POSTED,
+              date: { gte: weekStart, lte: weekEnd },
+            },
+          },
+          select: { amount: true },
+        }),
+      ]);
+
+      const inflow = debitLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      const outflow = creditLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+
+      result.push({ week: weekLabel, inflow: Math.round(inflow), outflow: Math.round(outflow) });
+    }
+    return result;
+  }
+
+  // =====================================================
+  // DASHBOARD ALERTS — actionable items for manager
+  // =====================================================
+  public async getDashboardAlerts() {
+    const [pendingOrders, overdueAR] = await Promise.all([
+      this.prisma.order.count({
+        where: { status: { in: ["PENDING", "DRAFT"] } },
+      }),
+      // Journal entries linked to buyers older than 30 days
+      this.prisma.journalEntry.count({
+        where: {
+          buyerId: { not: null },
+          status: JournalEntryStatus.POSTED,
+          createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+    ]);
+
+    const alerts: { type: "warning" | "info"; text: string; cta: string; href: string }[] = [];
+
+    if (overdueAR > 0) {
+      alerts.push({
+        type: "warning",
+        text: `${overdueAR} accounts receivable overdue by 30+ days`,
+        cta: "View AR",
+        href: "/accounting/buyer-ledger",
+      });
+    }
+
+    if (pendingOrders > 0) {
+      alerts.push({
+        type: "info",
+        text: `${pendingOrders} order${pendingOrders > 1 ? "s are" : " is"} awaiting approval`,
+        cta: "Review Orders",
+        href: "/order-management/orders",
+      });
+    }
+
+    return alerts;
+  }
+
+  // =====================================================
   // DOUBLE ENTRY HELPER
   // =====================================================
 
