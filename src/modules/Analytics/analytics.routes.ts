@@ -1,8 +1,7 @@
 import { Router, Request, Response } from "express";
 import { AnalyticsController } from "./analytics.controller";
-import { AnalyticsValidation } from "./analytics.validation";
-import { validateRequest } from "@/middleware/validation";
 import { asyncHandler } from "@/middleware/asyncHandler";
+import { authenticate } from "@/middleware/auth";
 
 export class AnalyticsRoutes {
   private router: Router;
@@ -15,18 +14,29 @@ export class AnalyticsRoutes {
   }
 
   private initializeRoutes(): void {
-    // Define Routes
-    this.router.get(
-      "/",
-      asyncHandler((req, res) => this.controller.getAll(req, res)),
-    );
+    // Summary counts (buyers, users, orders)
+    this.router.get("/", authenticate, asyncHandler((req, res) => this.controller.getAll(req, res)));
 
-    this.router.get(
-      "/financial-overview",
-      asyncHandler((req, res) =>
-        this.controller.getFinancialOverview(req, res),
-      ),
-    );
+    // Financial overview
+    this.router.get("/financial-overview", authenticate, asyncHandler((req, res) => this.controller.getFinancialOverview(req, res)));
+
+    // Revenue vs Expense — 12-month trend
+    this.router.get("/revenue-trend", authenticate, asyncHandler((req, res) => this.controller.getRevenueTrend(req, res)));
+
+    // Daily order volume trend
+    this.router.get("/order-trend", authenticate, asyncHandler((req, res) => this.controller.getOrderTrend(req, res)));
+
+    // Top buyers by revenue
+    this.router.get("/top-buyers", authenticate, asyncHandler((req, res) => this.controller.getTopBuyers(req, res)));
+
+    // AR aging buckets
+    this.router.get("/ar-aging", authenticate, asyncHandler((req, res) => this.controller.getARaging(req, res)));
+
+    // Weekly cash flow: inflow vs outflow
+    this.router.get("/cash-flow", authenticate, asyncHandler((req, res) => this.controller.getCashFlow(req, res)));
+
+    // Dashboard alerts (pending orders, overdue AR)
+    this.router.get("/alerts", authenticate, asyncHandler((req, res) => this.controller.getDashboardAlerts(req, res)));
   }
 
   public getRouter(): Router {

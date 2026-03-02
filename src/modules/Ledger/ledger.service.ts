@@ -266,6 +266,9 @@ export class LedgerService {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
+    const search = query.search?.trim() || "";
+    const sortBy = query.sortBy || "createdAt";
+    const sortOrder = (query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
 
     const where: any = {};
     if (query.startDate || query.endDate) {
@@ -275,13 +278,30 @@ export class LedgerService {
     }
     if (query.category) where.category = query.category;
 
+    // Search across voucherNo and narration
+    if (search) {
+      where.OR = [
+        { voucherNo: { contains: search, mode: "insensitive" } },
+        { narration: { contains: search, mode: "insensitive" } },
+        { buyer: { name: { contains: search, mode: "insensitive" } } },
+        { supplier: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    // Build orderBy — support date, createdAt
+    const allowedSortFields: Record<string, any> = {
+      createdAt: { createdAt: sortOrder },
+      date: { date: sortOrder },
+    };
+    const orderBy = allowedSortFields[sortBy] || { createdAt: sortOrder };
+
     const [total, data] = await Promise.all([
       this.prisma.journalEntry.count({ where }),
       this.prisma.journalEntry.findMany({
         where,
         take: limit,
         skip,
-        orderBy: { date: "desc" },
+        orderBy,
         include: {
           createdBy: { select: { firstName: true, lastName: true, email: true } },
           buyer: { select: { name: true } },
@@ -384,37 +404,65 @@ export class LedgerService {
    * Get balances for all buyers
    * Strategy: Query JournalEntry (which has buyerId) → include lines → aggregate
    */
-  public async getBuyerBalances() {
+  public async getBuyerBalances(query: any = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = query.search?.trim() || "";
+    const sortBy = query.sortBy || "createdAt";
+    const sortOrder = (query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
+
+    // Search filter on buyers
+    const buyerWhere: any = { isDeleted: false };
+    if (search) {
+      buyerWhere.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Sort buyers
+    const allowedSortFields: Record<string, any> = {
+      createdAt: { createdAt: sortOrder },
+      updatedAt: { updatedAt: sortOrder },
+      name: { name: sortOrder },
+    };
+    const orderBy = allowedSortFields[sortBy] || { createdAt: sortOrder };
+
+    // Count total matching buyers
+    const total = await this.prisma.buyer.count({ where: buyerWhere });
+
+    // Fetch paginated buyers
     const buyers = await this.prisma.buyer.findMany({
-      where: { isDeleted: false },
+      where: buyerWhere,
+      orderBy,
+      skip,
+      take: limit,
       select: { id: true, name: true, phone: true, location: true },
     });
 
-    // Query through JournalEntry (guaranteed to have buyerId set)
+    if (buyers.length === 0) {
+      return { page, limit, total, totalPages: Math.ceil(total / limit), data: [] };
+    }
+
+    // Fetch journal entries for only these buyers
+    const buyerIds = buyers.map((b) => b.id);
     const entries = await this.prisma.journalEntry.findMany({
       where: {
-        buyerId: { not: null },
+        buyerId: { in: buyerIds },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
       },
       include: {
-        lines: {
-          select: { type: true, amount: true },
-        },
+        lines: { select: { type: true, amount: true } },
       },
     });
 
-    console.log(`[LedgerService] getBuyerBalances: found ${entries.length} journal entries with buyerId`);
-
     // Group by buyer
     const summaryMap: Record<string, { totalInvoiced: number; totalReceived: number; balance: number }> = {};
-
     entries.forEach((entry) => {
       const bid = String(entry.buyerId);
-
-      if (!summaryMap[bid]) {
-        summaryMap[bid] = { totalInvoiced: 0, totalReceived: 0, balance: 0 };
-      }
-
+      if (!summaryMap[bid]) summaryMap[bid] = { totalInvoiced: 0, totalReceived: 0, balance: 0 };
       entry.lines.forEach((line) => {
         const amt = Number(line.amount);
         if (line.type === "DEBIT") {
@@ -427,53 +475,75 @@ export class LedgerService {
       });
     });
 
-    return buyers.map((b) => {
+    const data = buyers.map((b) => {
       const bid = String(b.id);
       const summary = summaryMap[bid] || { totalInvoiced: 0, totalReceived: 0, balance: 0 };
-
-      return {
-        ...b,
-        totalInvoiced: summary.totalInvoiced,
-        totalReceived: summary.totalReceived,
-        balance: summary.balance,
-      };
+      return { ...b, ...summary };
     });
+
+    return { page, limit, total, totalPages: Math.ceil(total / limit), data };
   }
 
   /**
    * Get balances for all suppliers
    */
-  public async getSupplierBalances() {
+  public async getSupplierBalances(query: any = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = query.search?.trim() || "";
+    const sortBy = query.sortBy || "createdAt";
+    const sortOrder = (query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
+
+    // Search filter on suppliers
+    const supplierWhere: any = { isDeleted: false };
+    if (search) {
+      supplierWhere.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Sort suppliers
+    const allowedSortFields: Record<string, any> = {
+      createdAt: { createdAt: sortOrder },
+      updatedAt: { updatedAt: sortOrder },
+      name: { name: sortOrder },
+    };
+    const orderBy = allowedSortFields[sortBy] || { createdAt: sortOrder };
+
+    // Count total matching suppliers
+    const total = await this.prisma.supplier.count({ where: supplierWhere });
+
+    // Fetch paginated suppliers
     const suppliers = await this.prisma.supplier.findMany({
-      where: { isDeleted: false },
+      where: supplierWhere,
+      orderBy,
+      skip,
+      take: limit,
       select: { id: true, name: true, phone: true, location: true },
     });
 
+    if (suppliers.length === 0) {
+      return { page, limit, total, totalPages: Math.ceil(total / limit), data: [] };
+    }
+
+    // Fetch journal lines for only these suppliers
+    const supplierIds = suppliers.map((s) => s.id);
     const lines = await this.prisma.journalLine.findMany({
       where: {
         journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
-        supplierId: { not: null },
+        supplierId: { in: supplierIds },
       },
-      include: {
-        journalEntry: {
-          select: { status: true }
-        }
-      }
     });
-
-    console.log(`[LedgerService] Found ${lines.length} journal lines for supplier summary`);
 
     // Group by supplier
     const summaryMap: Record<string, { totalBilled: number; totalPaid: number; balance: number }> = {};
-
     lines.forEach((l) => {
       const sid = String(l.supplierId);
       const amt = Number(l.amount);
-
-      if (!summaryMap[sid]) {
-        summaryMap[sid] = { totalBilled: 0, totalPaid: 0, balance: 0 };
-      }
-
+      if (!summaryMap[sid]) summaryMap[sid] = { totalBilled: 0, totalPaid: 0, balance: 0 };
       if (l.type === "CREDIT") {
         summaryMap[sid].totalBilled += amt;
         summaryMap[sid].balance += amt;
@@ -483,16 +553,12 @@ export class LedgerService {
       }
     });
 
-    return suppliers.map((s) => {
+    const data = suppliers.map((s) => {
       const sid = String(s.id);
       const summary = summaryMap[sid] || { totalBilled: 0, totalPaid: 0, balance: 0 };
-
-      return {
-        ...s,
-        totalBilled: summary.totalBilled,
-        totalPaid: summary.totalPaid,
-        balance: summary.balance,
-      };
+      return { ...s, ...summary };
     });
+
+    return { page, limit, total, totalPages: Math.ceil(total / limit), data };
   }
 }

@@ -97,17 +97,43 @@ export class LedgerController extends BaseController {
      * Get all buyer balances
      */
     public getBuyerBalances = async (req: Request, res: Response) => {
-        this.logAction("getBuyerBalances", req, {});
-        const result = await this.service.getBuyerBalances();
-        return this.sendResponse(res, "Buyer balances retrieved", HTTPStatusCode.OK, result);
+        const query = req.validatedQuery || req.query;
+        this.logAction("getBuyerBalances", req, { query });
+        const result = await this.service.getBuyerBalances(query);
+        return this.sendPaginatedResponse(
+            res,
+            {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
+                hasNext: result.page < result.totalPages,
+                hasPrevious: result.page > 1,
+            },
+            "Buyer balances retrieved",
+            result.data,
+        );
     };
 
     /**
      * Get all supplier balances
      */
     public getSupplierBalances = async (req: Request, res: Response) => {
-        this.logAction("getSupplierBalances", req, {});
-        const result = await this.service.getSupplierBalances();
-        return this.sendResponse(res, "Supplier balances retrieved", HTTPStatusCode.OK, result);
+        const query = req.validatedQuery || req.query;
+        this.logAction("getSupplierBalances", req, { query });
+        const result = await this.service.getSupplierBalances(query);
+        return this.sendPaginatedResponse(
+            res,
+            {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
+                hasNext: result.page < result.totalPages,
+                hasPrevious: result.page > 1,
+            },
+            "Supplier balances retrieved",
+            result.data,
+        );
     };
 }
