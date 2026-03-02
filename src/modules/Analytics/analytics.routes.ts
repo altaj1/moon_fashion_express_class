@@ -23,17 +23,23 @@ export class AnalyticsRoutes {
     // Revenue vs Expense — 12-month trend
     this.router.get("/revenue-trend", authenticate, asyncHandler((req, res) => this.controller.getRevenueTrend(req, res)));
 
-    // Daily order volume trend
+    // Daily order volume trend (with optional date filter)
     this.router.get("/order-trend", authenticate, asyncHandler((req, res) => this.controller.getOrderTrend(req, res)));
 
-    // Top buyers by revenue
+    // Top buyers by revenue (with optional date filter)
     this.router.get("/top-buyers", authenticate, asyncHandler((req, res) => this.controller.getTopBuyers(req, res)));
 
     // AR aging buckets
     this.router.get("/ar-aging", authenticate, asyncHandler((req, res) => this.controller.getARaging(req, res)));
 
+    // AP aging buckets
+    this.router.get("/ap-aging", authenticate, asyncHandler((req, res) => this.controller.getAPaging(req, res)));
+
     // Weekly cash flow: inflow vs outflow
     this.router.get("/cash-flow", authenticate, asyncHandler((req, res) => this.controller.getCashFlow(req, res)));
+
+    // Weekly accounts payable flow to suppliers
+    this.router.get("/payable-flow", authenticate, asyncHandler((req, res) => this.controller.getPayableFlow(req, res)));
 
     // Dashboard alerts (pending orders, overdue AR)
     this.router.get("/alerts", authenticate, asyncHandler((req, res) => this.controller.getDashboardAlerts(req, res)));
