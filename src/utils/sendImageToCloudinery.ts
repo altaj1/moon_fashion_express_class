@@ -1,4 +1,5 @@
 import { UploadApiResponse, v2 as cloudinary } from "cloudinary";
+import path from "path";
 
 import fs from "fs";
 import { promises as fsPromises } from "fs";
@@ -82,19 +83,33 @@ export const sendImagesToCloudinary = async (
     throw new Error("Failed to upload images.");
   }
 };
-const isProd = process.env.NODE_ENV === "production";
+// const isProd = process.env.NODE_ENV === "production";
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     const uploadPath = isProd ? "/tmp" : process.cwd() + "/uploads";
+//     cb(null, uploadPath);
+//   },
+//   filename: function (req, file, cb) {
+//     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+//     const filename = file.fieldname + "-" + uniqueSuffix;
+//     cb(null, filename);
+//   },
+// });
+const uploadDir = path.join(process.cwd(), "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = isProd ? "/tmp" : process.cwd() + "/uploads";
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = file.fieldname + "-" + uniqueSuffix;
-    cb(null, filename);
+    cb(null, file.fieldname + "-" + uniqueSuffix);
   },
 });
-
 export const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
