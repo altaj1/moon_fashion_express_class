@@ -32,6 +32,9 @@ export class AnalyticsRoutes {
     // AR aging buckets
     this.router.get("/ar-aging", authenticate, asyncHandler((req, res) => this.controller.getARaging(req, res)));
 
+    // AP aging buckets
+    this.router.get("/ap-aging", authenticate, asyncHandler((req, res) => this.controller.getAPaging(req, res)));
+
     // Weekly cash flow: inflow vs outflow
     this.router.get("/cash-flow", authenticate, asyncHandler((req, res) => this.controller.getCashFlow(req, res)));
 

@@ -61,6 +61,12 @@ export class AnalyticsController extends BaseController {
     return this.sendResponse(res, "AR aging retrieved", HTTPStatusCode.OK, result);
   };
 
+  /** AP aging buckets */
+  getAPaging = async (req: Request, res: Response) => {
+    const result = await this.service.getAPaging();
+    return this.sendResponse(res, "AP aging retrieved", HTTPStatusCode.OK, result);
+  };
+
   /** 6-week cash flow: inflow vs outflow */
   getCashFlow = async (req: Request, res: Response) => {
     const weeks = Number(req.query.weeks) || 6;

@@ -293,6 +293,38 @@ export class AnalyticsService extends BaseService<
   }
 
   // =====================================================
+  // AP AGING — payables bucketed by overdue days
+  // =====================================================
+  public async getAPaging() {
+    const entries = await this.prisma.journalEntry.findMany({
+      where: {
+        supplierId: { not: null },
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+      },
+      include: { lines: { select: { type: true, amount: true } } },
+    });
+
+    const buckets = [
+      { label: "0–30 days", min: 0, max: 30, amount: 0 },
+      { label: "31–60 days", min: 31, max: 60, amount: 0 },
+      { label: "61–90 days", min: 61, max: 90, amount: 0 },
+      { label: "90+ days", min: 91, max: Infinity, amount: 0 },
+    ];
+
+    const now = new Date();
+    entries.forEach((entry) => {
+      const ageDays = Math.floor((now.getTime() - new Date(entry.createdAt).getTime()) / 86400000);
+      const net = entry.lines.reduce((sum: number, l: any) =>
+        l.type === JournalEntryType.CREDIT ? sum + Number(l.amount) : sum - Number(l.amount), 0);
+      if (net <= 0) return; // Fully paid, skip
+      const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max);
+      if (bucket) bucket.amount += net;
+    });
+
+    return buckets.map(b => ({ label: b.label, amount: Math.round(b.amount) }));
+  }
+
+  // =====================================================
   // CASH FLOW — 6 weekly inflow vs outflow buckets
   // =====================================================
   public async getCashFlow(weeks = 6) {
