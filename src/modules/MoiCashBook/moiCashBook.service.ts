@@ -37,7 +37,7 @@ export class MoiCashBookService extends BaseService<
     pagination?: Partial<PaginationOptions>,
     include?: any,
   ) {
-    const { search, type, status, page, limit, sortBy, sortOrder } = querys;
+    const { search, type, status, page, limit, sortBy, sortOrder, companyProfileId } = querys;
     // 3. Define Ordering
     const orderBy = {
       [sortBy]: sortOrder,
@@ -47,6 +47,7 @@ export class MoiCashBookService extends BaseService<
       // Filter by Type and Status if provided
       ...(type && { type }),
       ...(status && { status }),
+      ...(companyProfileId && { companyProfileId }),
 
       // Search logic (Filters by purpose OR voucherNo)
       ...(search && {
@@ -58,6 +59,8 @@ export class MoiCashBookService extends BaseService<
     };
     return super.findMany(filters, pagination, orderBy, {
       employee: true,
+      expenseAccount: true,
+      companyProfile: true,
     });
   }
 

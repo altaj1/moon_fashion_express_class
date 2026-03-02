@@ -21,7 +21,9 @@ export const MoiCashBookValidation = {
         .enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"])
         .default("PENDING"),
       remarks: z.string().max(500).optional(),
-      journalEntryId: z.string().uuid().optional(),
+      journalEntryId: z.string().uuid().optional().or(z.literal("")),
+      expenseAccountId: z.string().uuid().optional().or(z.literal("")),
+      companyProfileId: z.string().uuid("Please select a company"),
     })
     .strict(),
 
@@ -38,7 +40,9 @@ export const MoiCashBookValidation = {
       type: z.enum(["ISSUE", "SETTLE", "EXPENSE"]).optional(),
       status: z.enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"]).optional(),
       remarks: z.string().max(500).optional(),
-      journalEntryId: z.string().uuid().optional(),
+      journalEntryId: z.string().uuid().optional().or(z.literal("")),
+      expenseAccountId: z.string().uuid().optional().or(z.literal("")),
+      companyProfileId: z.string().uuid().optional().or(z.literal("")),
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {
@@ -66,6 +70,7 @@ export const MoiCashBookValidation = {
         }, z.number().int().min(1).max(100).default(10)),
         search: z.string().optional(), // Filters by purpose or voucherNo
         type: z.enum(["ISSUE", "SETTLE", "EXPENSE"]).optional(),
+        companyProfileId: z.string().uuid().optional(),
         status: z
           .enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"])
           .optional(),
