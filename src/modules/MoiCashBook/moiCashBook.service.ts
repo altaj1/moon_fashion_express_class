@@ -1,150 +1,64 @@
 import { BaseService } from "@/core/BaseService";
-import { 
-  Prisma, 
-  PrismaClient, 
-  JournalEntryCategory, 
-  JournalEntryType,
-  AccountType
-} from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
 import {
   CreateMoiCashBookInput,
   UpdateMoiCashBookInput,
 } from "./moiCashBook.validation";
-import { JournalEntryService } from "../JournalEntry/journalEntry.service";
 
 export class MoiCashBookService extends BaseService<
   any,
   CreateMoiCashBookInput,
   UpdateMoiCashBookInput
 > {
-  private journalEntryService: JournalEntryService;
-
   constructor(prisma: PrismaClient) {
     super(prisma, "MoiCashBook", {
       enableSoftDelete: true,
       enableAuditFields: true,
     });
-    this.journalEntryService = new JournalEntryService(prisma);
   }
 
   protected getModel() {
-    // @ts-ignore - Handled in BaseService for common models, but explicitly defined for safety
+    // @ts-ignore - The model 'moiCashBook' might not exist in PrismaClient types yet
     return this.prisma.moiCashBook;
   }
 
-  /**
-   * Industry Standard Creation:
-   * 1. Creates the Cash Book Record
-   * 2. Generates the Journal Entry
-   * 3. Links them together
-   */
-  public async create(data: CreateMoiCashBookInput & { createdById?: string }) {
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Resolve Company Profile (Auto-support for single entity)
-      let companyProfileId = data.companyProfileId;
-      if (!companyProfileId) {
-        const defaultProfile = await tx.companyProfile.findFirst({
-          where: { isDeleted: false }
-        });
-        if (!defaultProfile) throw new Error("No active Company Profile found. Please create one in Company Settings.");
-        companyProfileId = defaultProfile.id;
-      }
+  // =========================================================================
+  // Public API - Exposing BaseService methods
+  // Since BaseService methods are protected, we must expose them here
+  // =========================================================================
 
-      // 2. Resolve the "Staff Advance" Control Account (Asset)
-      let advanceAccountId = data.advanceAccountId;
-      if (!advanceAccountId) {
-        const staffAdvanceAcc = await tx.accountHead.findFirst({
-          where: {
-            companyProfileId: companyProfileId,
-            name: { contains: "Staff Advance", mode: "insensitive" },
-            isDeleted: false
-          }
-        });
-        if (!staffAdvanceAcc) {
-          throw new Error("Accounting Error: No 'Staff Advance' control account found. Please create one in Chart of Accounts.");
-        }
-        advanceAccountId = staffAdvanceAcc.id;
-      }
-
-      // 3. Get Employee Info for Narration
-      const employee = await tx.user.findUnique({
-        where: { id: data.employeeId },
-        select: { firstName: true, lastName: true }
-      });
-
-      // 4. Prepare Journal Lines
-      const lines: any[] = [];
-      let category = JournalEntryCategory.JOURNAL;
-
-      if (data.type === "ISSUE") {
-        if (!data.cashAccountId) throw new Error("Cash/Bank account is required for issuing funds.");
-        category = JournalEntryCategory.PAYMENT;
-        lines.push({ accountHeadId: advanceAccountId, type: JournalEntryType.DEBIT, amount: data.amount });
-        lines.push({ accountHeadId: data.cashAccountId, type: JournalEntryType.CREDIT, amount: data.amount });
-      } 
-      else if (data.type === "SETTLE") {
-        category = data.expenseAccountId ? JournalEntryCategory.JOURNAL : JournalEntryCategory.RECEIPT;
-        lines.push({ accountHeadId: advanceAccountId, type: JournalEntryType.CREDIT, amount: data.amount });
-        
-        if (data.expenseAccountId) {
-          lines.push({ accountHeadId: data.expenseAccountId, type: JournalEntryType.DEBIT, amount: data.amount });
-        } else if (data.cashAccountId) {
-          lines.push({ accountHeadId: data.cashAccountId, type: JournalEntryType.DEBIT, amount: data.amount });
-        }
-      } 
-      else if (data.type === "EXPENSE") {
-        if (!data.cashAccountId || !data.expenseAccountId) throw new Error("Acc counts required for direct expense.");
-        category = JournalEntryCategory.PAYMENT;
-        lines.push({ accountHeadId: data.expenseAccountId, type: JournalEntryType.DEBIT, amount: data.amount });
-        lines.push({ accountHeadId: data.cashAccountId, type: JournalEntryType.CREDIT, amount: data.amount });
-      }
-
-      // 5. Create Journal Entry Draft
-      const journalData = {
-        date: new Date(),
-        category,
-        narration: `[Cash Book] ${data.purpose} - ${employee?.firstName} ${employee?.lastName}`,
-        companyProfileId: companyProfileId,
-        createdById: data.createdById,
-        lines: lines
-      };
-
-      const entry = await this.journalEntryService.createDraft(journalData as any);
-
-      // 6. Create the Cash Book Record
-      const result = await tx.moiCashBook.create({
-        data: {
-          voucherNo: data.voucherNo,
-          amount: data.amount,
-          purpose: data.purpose,
-          employeeId: data.employeeId,
-          type: data.type,
-          status: data.status || "APPROVED",
-          remarks: data.remarks,
-          companyProfileId: companyProfileId,
-          journalEntryId: entry.id
-        }
-      });
-
-      if (data.autoPost) {
-        await this.journalEntryService.postEntry(entry.id);
-      }
-
-      return result;
-    });
+  public async create(data: CreateMoiCashBookInput, include?: any) {
+    return super.create(data, include);
   }
 
   public async findMany(
     querys: any = {},
     pagination?: Partial<PaginationOptions>,
+    include?: any,
   ) {
-    const { search, type, status, sortBy = "createdAt", sortOrder = "desc", companyProfileId } = querys;
-    
+    const {
+      search,
+      type,
+      status,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      companyProfileId,
+    } = querys;
+    // 3. Define Ordering
+    const orderBy = {
+      [sortBy]: sortOrder,
+    };
+    // 1. Build the filter object (where clause)
     const filters: Prisma.MoiCashBookWhereInput = {
-      ...(companyProfileId && { companyProfileId }),
+      // Filter by Type and Status if provided
       ...(type && { type }),
       ...(status && { status }),
+      ...(companyProfileId && { companyProfileId }),
+
+      // Search logic (Filters by purpose OR voucherNo)
       ...(search && {
         OR: [
           { purpose: { contains: search, mode: "insensitive" } },
@@ -152,34 +66,33 @@ export class MoiCashBookService extends BaseService<
         ],
       }),
     };
-
-    return super.findMany(filters, pagination, { [sortBy]: sortOrder }, {
+    return super.findMany(filters, pagination, orderBy, {
       employee: true,
-      journalEntry: true
+      expenseAccount: true,
+      companyProfile: true,
     });
   }
 
-  // RE-EXPOSING PUBLIC WRAPPERS FOR CONTROLLER
   public async findById(id: string, include?: any) {
-    return super.findById(id, include || { employee: true, journalEntry: true });
+    return super.findById(id, include);
   }
 
-  public async updateById(id: string, data: UpdateMoiCashBookInput) {
-    return super.updateById(id, data);
+  public async updateById(
+    id: string,
+    data: UpdateMoiCashBookInput,
+    include?: any,
+  ) {
+    return super.updateById(id, data, include);
   }
 
   public async deleteById(id: string) {
     return super.deleteById(id);
   }
 
-  public async exists(filters: any) {
-    return super.exists(filters);
-  }
-
-  public async getSummaries(companyProfileId?: string) {
+  public async getSummaries() {
+    // 1. Get all approved/settled transactions linked to employees
     const transactions = await this.prisma.moiCashBook.findMany({
       where: {
-        ...(companyProfileId && { companyProfileId }),
         status: { in: ["APPROVED", "SETTLED"] },
       },
       include: {
@@ -194,6 +107,7 @@ export class MoiCashBookService extends BaseService<
       },
     });
 
+    // 2. Aggregate by employeeId
     const summaryMap: Record<string, any> = {};
 
     for (const tx of transactions) {
@@ -217,11 +131,15 @@ export class MoiCashBookService extends BaseService<
         summaryMap[empId].totalReturnedAmount += amount;
       }
 
-      if (new Date(tx.createdAt) > new Date(summaryMap[empId].lastTransaction)) {
+      // Update lastTransaction if this one is newer
+      if (
+        new Date(tx.createdAt) > new Date(summaryMap[empId].lastTransaction)
+      ) {
         summaryMap[empId].lastTransaction = tx.createdAt;
       }
     }
 
+    // 3. Calculate Outstanding and format result
     return Object.values(summaryMap).map((s: any) => ({
       ...s,
       outstandingAmount: s.totalIssuedAmount - s.totalReturnedAmount,
@@ -235,21 +153,36 @@ export class MoiCashBookService extends BaseService<
         status: { in: ["APPROVED", "SETTLED"] },
       },
       include: {
-        employee: { select: { id: true, firstName: true, lastName: true, designation: true } },
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            designation: true,
+          },
+        },
       },
     });
 
     if (transactions.length === 0) {
+      // Try to get employee info independently if no transactions exist
       const employee = await this.prisma.user.findUnique({
         where: { id: employeeId },
-        select: { id: true, firstName: true, lastName: true, designation: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          designation: true,
+        },
       });
       if (!employee) return null;
       return {
         id: employee.id,
         name: `${employee.firstName} ${employee.lastName}`,
         designation: employee.designation,
-        totalIssuedAmount: 0, totalReturnedAmount: 0, outstandingAmount: 0,
+        totalIssuedAmount: 0,
+        totalReturnedAmount: 0,
+        outstandingAmount: 0,
         lastTransaction: null,
       };
     }
@@ -260,19 +193,21 @@ export class MoiCashBookService extends BaseService<
 
     for (const tx of transactions) {
       const amount = Number(tx.amount);
-      if (tx.type === "ISSUE") totalIssuedAmount += amount;
-      else if (tx.type === "SETTLE") totalReturnedAmount += amount;
-      
+      if (tx.type === "ISSUE") {
+        totalIssuedAmount += amount;
+      } else if (tx.type === "SETTLE") {
+        totalReturnedAmount += amount;
+      }
       if (new Date(tx.createdAt) > new Date(lastTransaction)) {
         lastTransaction = tx.createdAt;
       }
     }
 
-    const emp = transactions[0].employee;
+    const first = transactions[0];
     return {
       id: employeeId,
-      name: `${emp.firstName} ${emp.lastName}`,
-      designation: emp.designation,
+      name: `${first.employee.firstName} ${first.employee.lastName}`,
+      designation: first.employee.designation,
       totalIssuedAmount,
       totalReturnedAmount,
       outstandingAmount: totalIssuedAmount - totalReturnedAmount,
@@ -280,7 +215,10 @@ export class MoiCashBookService extends BaseService<
     };
   }
 
-  public async getEmployeeDetail(employeeId: string, pagination: Partial<PaginationOptions> = {}) {
+  public async getEmployeeDetail(
+    employeeId: string,
+    pagination: Partial<PaginationOptions> = {},
+  ) {
     const { page = 1, limit = 10 } = pagination;
     const skip = (page - 1) * limit;
 
@@ -288,17 +226,34 @@ export class MoiCashBookService extends BaseService<
       this.prisma.moiCashBook.findMany({
         where: { employeeId },
         orderBy: { createdAt: "desc" },
-        skip, take: limit,
-        include: { employee: true, journalEntry: true },
+        skip,
+        take: limit,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+        },
       }),
       this.prisma.moiCashBook.count({ where: { employeeId } }),
     ]);
 
     return {
-      data, total, page, limit,
+      data,
+      total,
+      page,
+      limit,
       totalPages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
       hasPrevious: page > 1,
     };
+  }
+
+  public async exists(filters: any) {
+    return super.exists(filters);
   }
 }

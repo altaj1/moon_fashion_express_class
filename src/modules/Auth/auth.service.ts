@@ -119,14 +119,14 @@ export class AuthService extends BaseService<User> {
 
     // Send OTP for email verification
     this.otpService
-      .sendOTP({
-        identifier: email,
-        type: OTPType.email_verification,
-        userId: user.id,
-      })
+      .sendDefaultPasswordEmail(
+        email,
+        `${firstName} ${lastName}`,
+        config.defaultUser.password || "ChangeMe123!",
+      )
       .catch((error) => {
         AppLogger.error(
-          "Failed to send verification email after registration",
+          "Failed to send default password email after registration",
           {
             userId: user.id,
             email: user.email,
@@ -260,6 +260,12 @@ export class AuthService extends BaseService<User> {
     const { email } = data;
 
     const user = await this.findOne({ email });
+    console.log(
+      "Forgot password request for email:",
+      email,
+      "User found:",
+      user,
+    ); // Debug log
     if (!user || user.status !== UserAccountStatus.active) {
       // Generic message for security
       return {
@@ -329,7 +335,9 @@ export class AuthService extends BaseService<User> {
   /**
    * Reset password
    */
-  async resetPassword(data: Omit<ResetPasswordInput, 'currentPassword'>): Promise<{ message: string }> {
+  async resetPassword(
+    data: Omit<ResetPasswordInput, "currentPassword">,
+  ): Promise<{ message: string }> {
     const { email, newPassword } = data;
 
     const user = await this.findOne({ email });
@@ -350,7 +358,7 @@ export class AuthService extends BaseService<User> {
     });
 
     if (!verifiedOTP) {
-      throw new BadRequestError('Password reset code not verified or expired');
+      throw new BadRequestError("Password reset code not verified or expired");
     }
 
     const hashedPassword = await this.hashPassword(newPassword);
