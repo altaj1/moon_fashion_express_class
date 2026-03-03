@@ -46,16 +46,6 @@ export const AccountHeadValidation = {
   // ================= QUERY =================
   query: {
     list: z.object({
-      page: z.preprocess(
-        (val) => Number(val) || 1,
-        z.number().int().min(1).default(1),
-      ),
-
-      limit: z.preprocess((val) => {
-        const num = Number(val) || 10;
-        return Math.min(Math.max(num, 1), 100);
-      }, z.number().int().min(1).max(100).default(10)),
-
       search: z.string().optional(),
 
       type: z

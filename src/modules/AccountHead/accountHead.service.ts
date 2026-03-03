@@ -61,6 +61,19 @@ export class AccountHeadService extends BaseService<
     });
   }
 
+  public async findAll(filters: any = {}, orderBy?: any) {
+    const where = this.buildWhereClause(filters);
+
+    return this.prisma.accountHead.findMany({
+      where,
+      orderBy: orderBy || { createdAt: "desc" },
+      include: {
+        parent: true,
+        children: true,
+      },
+    });
+  }
+
   public async findById(id: string, include?: any) {
     return super.findById(id, {
       parent: true,
