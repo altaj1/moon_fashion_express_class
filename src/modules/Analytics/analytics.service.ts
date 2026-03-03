@@ -48,9 +48,6 @@ export class AnalyticsService extends BaseService<
         where: {
           ...orderWhere,
           isDeleted: false,
-          status: {
-            in: [OrderStatus.PENDING, OrderStatus.DRAFT],
-          },
         },
       }),
     ]);

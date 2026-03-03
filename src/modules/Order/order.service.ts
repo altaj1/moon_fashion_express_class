@@ -359,9 +359,15 @@ export class OrderService extends BaseService<
       data,
     };
   }
-  public async analytics(startDate?: string, endDate?: string) {
+  public async analytics(
+    startDate?: string,
+    endDate?: string,
+    isDeleted: boolean = false,
+  ) {
     // Build filter
-    const where: any = {};
+    const where: any = {
+      isDeleted,
+    };
 
     if (startDate && endDate) {
       where.orderDate = {
@@ -393,8 +399,14 @@ export class OrderService extends BaseService<
     }));
   }
 
-  public async analyticsOrdersStatus(startDate?: string, endDate?: string) {
-    const where: any = {};
+  public async analyticsOrdersStatus(
+    startDate?: string,
+    endDate?: string,
+    isDeleted: boolean = false,
+  ) {
+    const where: any = {
+      isDeleted,
+    };
 
     if (startDate && endDate) {
       where.orderDate = {
