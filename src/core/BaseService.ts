@@ -50,7 +50,7 @@ export abstract class BaseService<
     this.options = {
       enableSoftDelete: false,
       enableAuditFields: false,
-      defaultPageSize: 10,
+      // defaultPageSize: 10,
       maxPageSize: 1000,
       ...options,
     };

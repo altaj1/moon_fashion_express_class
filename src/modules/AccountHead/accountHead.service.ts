@@ -6,6 +6,7 @@ import {
   UpdateAccountHeadInput,
 } from "./accountHead.validation";
 import { profile } from "node:console";
+import _ from "lodash";
 
 export class AccountHeadService extends BaseService<
   any,
@@ -39,25 +40,35 @@ export class AccountHeadService extends BaseService<
     if (data.parentId) {
       const parent = await this.prisma.accountHead.findUnique({
         where: { id: data.parentId },
-        select: { type: true }
+        select: { type: true },
       });
 
       if (parent && parent.type !== data.type) {
-        throw new Error(`Architectural Mismatch: Cannot create a ${data.type} account under a ${parent.type} parent.`);
+        throw new Error(
+          `Architectural Mismatch: Cannot create a ${data.type} account under a ${parent.type} parent.`,
+        );
       }
     }
     return super.create(data, include);
   }
 
-  public async findMany(
+  public async findManyAccountHead(
     filters: any = {},
     pagination?: Partial<PaginationOptions>,
     orderBy?: any,
     include?: any,
   ) {
-    return super.findMany(filters, pagination, orderBy, {
-      parent: true,
-      children: true,
+    // return super.findMany(filters, pagination, orderBy, {
+    //   parent: true,
+    //   children: true,
+    // });
+    return await this.prisma.accountHead.findMany({
+      where: filters,
+      orderBy: orderBy,
+      include: {
+        parent: true,
+        children: true,
+      },
     });
   }
 
@@ -97,19 +108,21 @@ export class AccountHeadService extends BaseService<
     if (data.parentId) {
       const parent = await this.prisma.accountHead.findUnique({
         where: { id: data.parentId },
-        select: { type: true }
+        select: { type: true },
       });
 
       // We need to know the type of the CURRENT account head to compare
       const current = await this.prisma.accountHead.findUnique({
         where: { id },
-        select: { type: true }
+        select: { type: true },
       });
 
       const targetType = data.type || current?.type;
 
       if (parent && targetType && parent.type !== targetType) {
-        throw new Error(`Architectural Mismatch: Cannot move a ${targetType} account under a ${parent.type} parent.`);
+        throw new Error(
+          `Architectural Mismatch: Cannot move a ${targetType} account under a ${parent.type} parent.`,
+        );
       }
     }
     // Sanitize code

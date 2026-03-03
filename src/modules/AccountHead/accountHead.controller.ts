@@ -31,10 +31,10 @@ export class AccountHeadController extends BaseController {
    * Get all AccountHeads
    */
   public getAll = async (req: Request, res: Response) => {
-    const pagination = this.extractPaginationParams(req);
+    // const pagination = this.extractPaginationParams(req);
     const query = req.validatedQuery || req.query;
     const { search, type, sortBy, sortOrder, isDeleted } = query;
-    this.logAction("getAll", req, { pagination, query });
+    // this.logAction("getAll", req, { pagination, query });
 
     const filters: any = {};
     if (type) {
@@ -58,20 +58,20 @@ export class AccountHeadController extends BaseController {
           }
         : undefined;
 
-    const result = await this.service.findMany(filters, pagination, orderBy);
+    const result = await this.service.findManyAccountHead(filters, orderBy);
 
     return this.sendPaginatedResponse(
       res,
       {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-        hasNext: result.hasNext,
-        hasPrevious: result.hasPrevious,
+        page: 0,
+        limit: 0,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
       },
       "AccountHeads retrieved successfully",
-      result.data,
+      result,
     );
   };
 
