@@ -78,7 +78,7 @@ export const InvoiceValidation = {
       search: z.string().optional(),
 
       sortBy: z
-        .enum(["piNumber", "date", "createdAt", "status"])
+        .enum(["piNumber", "date", "createdAt", "status", "updatedAt"])
         .default("createdAt"),
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),

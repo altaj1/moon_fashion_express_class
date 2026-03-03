@@ -210,6 +210,7 @@ export const LCManagementValidation = {
           "expiryDate",
           "exportLcNo",
           "createdAt",
+          "updatedAt",
         ])
         .default("createdAt"),
       isDeleted: z.preprocess((val) => {
@@ -222,6 +223,12 @@ export const LCManagementValidation = {
       endDate: z.string().optional(),
       expiryStartDate: z.string().optional(),
       expiryEndDate: z.string().optional(),
+      maxAmount: z
+        .preprocess((val) => stringToNumber(val), z.number().positive())
+        .optional(),
+      minAmount: z
+        .preprocess((val) => stringToNumber(val), z.number().positive())
+        .optional(),
     }),
   },
 };
