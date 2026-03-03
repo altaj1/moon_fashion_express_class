@@ -417,6 +417,8 @@ export class LedgerService {
     if (search) {
       buyerWhere.OR = [
         { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { merchandiser: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
       ];
@@ -439,7 +441,16 @@ export class LedgerService {
       orderBy,
       skip,
       take: limit,
-      select: { id: true, name: true, phone: true, location: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        merchandiser: true,
+        phone: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (buyers.length === 0) {
@@ -500,6 +511,8 @@ export class LedgerService {
     if (search) {
       supplierWhere.OR = [
         { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
       ];
@@ -522,7 +535,15 @@ export class LedgerService {
       orderBy,
       skip,
       take: limit,
-      select: { id: true, name: true, phone: true, location: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (suppliers.length === 0) {
