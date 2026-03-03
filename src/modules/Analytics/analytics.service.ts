@@ -3,6 +3,7 @@ import {
   AccountType,
   JournalEntryStatus,
   JournalEntryType,
+  OrderStatus,
   PrismaClient,
 } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
@@ -49,9 +50,17 @@ export class AnalyticsService extends BaseService<
 
     // Run counts in parallel 🚀
     const [buyersCount, usersCount, ordersCount] = await Promise.all([
-      this.prisma.buyer.count({ where: buyerWhere }),
-      this.prisma.user.count({ where: userWhere }),
-      this.prisma.order.count({ where: orderWhere }),
+      this.prisma.buyer.count({ where: { ...buyerWhere, isDeleted: false } }),
+      this.prisma.user.count({ where: { ...userWhere, isDeleted: false } }),
+      this.prisma.order.count({
+        where: {
+          ...orderWhere,
+          isDeleted: false,
+          status: {
+            notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+          },
+        },
+      }),
     ]);
 
     return {
@@ -116,14 +125,22 @@ export class AnalyticsService extends BaseService<
         this.prisma.journalLine.findMany({
           where: {
             accountHead: { type: AccountType.INCOME },
-            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+            journalEntry: {
+              status: JournalEntryStatus.POSTED,
+              date: { gte: start, lte: end },
+              isDeleted: false,
+            },
           },
           select: { type: true, amount: true },
         }),
         this.prisma.journalLine.findMany({
           where: {
             accountHead: { type: AccountType.EXPENSE },
-            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+            journalEntry: {
+              status: JournalEntryStatus.POSTED,
+              date: { gte: start, lte: end },
+              isDeleted: false,
+            },
           },
           select: { type: true, amount: true },
         }),
@@ -163,7 +180,7 @@ export class AnalyticsService extends BaseService<
       const dayEnd = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59);
 
       const count = await this.prisma.order.count({
-        where: { orderDate: { gte: dayStart, lte: dayEnd } },
+        where: { orderDate: { gte: dayStart, lte: dayEnd }, isDeleted: false },
       });
 
       result.push({
@@ -203,6 +220,7 @@ export class AnalyticsService extends BaseService<
             type: JournalEntryType.DEBIT,
             journalEntry: {
               status: JournalEntryStatus.POSTED,
+              isDeleted: false, // Added isDeleted: false
               ...(hasDateFilter ? { date: dateFilter } : {}),
             },
           },
@@ -211,6 +229,7 @@ export class AnalyticsService extends BaseService<
         this.prisma.order.count({
           where: {
             buyerId: buyer.id,
+            isDeleted: false, // Added isDeleted: false
             ...(hasDateFilter ? { orderDate: dateFilter } : {}),
           },
         }),
@@ -249,6 +268,7 @@ export class AnalyticsService extends BaseService<
           journalEntry: {
             status: JournalEntryStatus.POSTED,
             date: { gte: weekStart, lte: weekEnd },
+            isDeleted: false, // Added isDeleted: false
           },
         },
         select: { amount: true },
@@ -268,6 +288,7 @@ export class AnalyticsService extends BaseService<
       where: {
         buyerId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+        isDeleted: false, // Added isDeleted: false
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -300,6 +321,7 @@ export class AnalyticsService extends BaseService<
       where: {
         supplierId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+        isDeleted: false, // Added isDeleted: false
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -347,6 +369,7 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: weekStart, lte: weekEnd },
+              isDeleted: false, // Added isDeleted: false
             },
           },
           select: { amount: true },
@@ -357,6 +380,7 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: weekStart, lte: weekEnd },
+              isDeleted: false, // Added isDeleted: false
             },
           },
           select: { amount: true },
@@ -377,13 +401,14 @@ export class AnalyticsService extends BaseService<
   public async getDashboardAlerts() {
     const [pendingOrders, overdueAR] = await Promise.all([
       this.prisma.order.count({
-        where: { status: { in: ["PENDING", "DRAFT"] } },
+        where: { status: { in: ["PENDING", "DRAFT"] }, isDeleted: false },
       }),
       // Journal entries linked to buyers older than 30 days
       this.prisma.journalEntry.count({
         where: {
           buyerId: { not: null },
           status: JournalEntryStatus.POSTED,
+          isDeleted: false,
           createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
@@ -437,6 +462,7 @@ export class AnalyticsService extends BaseService<
         },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -455,6 +481,7 @@ export class AnalyticsService extends BaseService<
         bankId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -473,6 +500,7 @@ export class AnalyticsService extends BaseService<
         buyerId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -491,6 +519,7 @@ export class AnalyticsService extends BaseService<
         supplierId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -516,6 +545,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           status: JournalEntryStatus.POSTED,
           date: { gte: start },
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -541,6 +571,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           status: JournalEntryStatus.POSTED,
           date: { gte: start },
+          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -576,6 +607,7 @@ export class AnalyticsService extends BaseService<
     const advances = await this.prisma.moiCashBook.findMany({
       where: {
         status: { in: ["PENDING", "APPROVED"] },
+        isDeleted: false,
       },
     });
 
