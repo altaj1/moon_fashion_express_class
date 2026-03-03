@@ -108,7 +108,10 @@ export class AnalyticsService extends BaseService<
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      const label = start.toLocaleString("default", { month: "short", year: "2-digit" });
+      const label = start.toLocaleString("default", {
+        month: "short",
+        year: "2-digit",
+      });
 
       const [revLines, expLines] = await Promise.all([
         this.prisma.journalLine.findMany({
@@ -118,7 +121,7 @@ export class AnalyticsService extends BaseService<
               is: {
                 status: JournalEntryStatus.POSTED,
                 date: { gte: start, lte: end },
-              }
+              },
             },
           },
           select: { type: true, amount: true },
@@ -130,7 +133,7 @@ export class AnalyticsService extends BaseService<
               is: {
                 status: JournalEntryStatus.POSTED,
                 date: { gte: start, lte: end },
-              }
+              },
             },
           },
           select: { type: true, amount: true },
@@ -162,15 +165,32 @@ export class AnalyticsService extends BaseService<
 
     const current = new Date(rangeStart);
     while (current <= rangeEnd) {
-      const dayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 0, 0, 0);
-      const dayEnd = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59);
+      const dayStart = new Date(
+        current.getFullYear(),
+        current.getMonth(),
+        current.getDate(),
+        0,
+        0,
+        0,
+      );
+      const dayEnd = new Date(
+        current.getFullYear(),
+        current.getMonth(),
+        current.getDate(),
+        23,
+        59,
+        59,
+      );
 
       const count = await this.prisma.order.count({
         where: { orderDate: { gte: dayStart, lte: dayEnd }, isDeleted: false },
       });
 
       result.push({
-        date: dayStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+        date: dayStart.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+        }),
         orders: count,
       });
 
@@ -204,7 +224,7 @@ export class AnalyticsService extends BaseService<
               is: {
                 status: JournalEntryStatus.POSTED,
                 ...(hasDateFilter ? { date: dateFilter } : {}),
-              }
+              },
             },
           },
           select: { amount: true },
@@ -218,7 +238,10 @@ export class AnalyticsService extends BaseService<
         }),
       ]);
 
-      const revenue = lines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      const revenue = lines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
       if (revenue > 0 || orderCount > 0) {
         results.push({ name: buyer.name, revenue, orders: orderCount });
       }
@@ -248,13 +271,16 @@ export class AnalyticsService extends BaseService<
             is: {
               status: JournalEntryStatus.POSTED,
               date: { gte: weekStart, lte: weekEnd },
-            }
+            },
           },
         },
         select: { amount: true },
       });
 
-      const payable = apLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      const payable = apLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
       result.push({ week: weekLabel, payable: Math.round(payable) });
     }
     return result;
@@ -278,15 +304,25 @@ export class AnalyticsService extends BaseService<
 
     const now = new Date();
     entries.forEach((entry) => {
-      const ageDays = Math.floor((now.getTime() - new Date(entry.createdAt).getTime()) / 86400000);
-      const net = entry.lines.reduce((sum, l) =>
-        l.type === JournalEntryType.DEBIT ? sum + Number(l.amount) : sum - Number(l.amount), 0);
+      const ageDays = Math.floor(
+        (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
+      );
+      const net = entry.lines.reduce(
+        (sum, l) =>
+          l.type === JournalEntryType.DEBIT
+            ? sum + Number(l.amount)
+            : sum - Number(l.amount),
+        0,
+      );
       if (net <= 0) return;
-      const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max);
+      const bucket = buckets.find((b) => ageDays >= b.min && ageDays <= b.max);
       if (bucket) bucket.amount += net;
     });
 
-    return buckets.map(b => ({ label: b.label, amount: Math.round(b.amount) }));
+    return buckets.map((b) => ({
+      label: b.label,
+      amount: Math.round(b.amount),
+    }));
   }
 
   public async getAPaging() {
@@ -307,15 +343,25 @@ export class AnalyticsService extends BaseService<
 
     const now = new Date();
     entries.forEach((entry) => {
-      const ageDays = Math.floor((now.getTime() - new Date(entry.createdAt).getTime()) / 86400000);
-      const net = entry.lines.reduce((sum: number, l: any) =>
-        l.type === JournalEntryType.CREDIT ? sum + Number(l.amount) : sum - Number(l.amount), 0);
+      const ageDays = Math.floor(
+        (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
+      );
+      const net = entry.lines.reduce(
+        (sum: number, l: any) =>
+          l.type === JournalEntryType.CREDIT
+            ? sum + Number(l.amount)
+            : sum - Number(l.amount),
+        0,
+      );
       if (net <= 0) return;
-      const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max);
+      const bucket = buckets.find((b) => ageDays >= b.min && ageDays <= b.max);
       if (bucket) bucket.amount += net;
     });
 
-    return buckets.map(b => ({ label: b.label, amount: Math.round(b.amount) }));
+    return buckets.map((b) => ({
+      label: b.label,
+      amount: Math.round(b.amount),
+    }));
   }
 
   public async getCashFlow(weeks = 6) {
@@ -339,7 +385,7 @@ export class AnalyticsService extends BaseService<
               is: {
                 status: JournalEntryStatus.POSTED,
                 date: { gte: weekStart, lte: weekEnd },
-              }
+              },
             },
           },
           select: { amount: true },
@@ -351,17 +397,27 @@ export class AnalyticsService extends BaseService<
               is: {
                 status: JournalEntryStatus.POSTED,
                 date: { gte: weekStart, lte: weekEnd },
-              }
+              },
             },
           },
           select: { amount: true },
         }),
       ]);
 
-      const inflow = debitLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
-      const outflow = creditLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      const inflow = debitLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
+      const outflow = creditLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
 
-      result.push({ week: weekLabel, inflow: Math.round(inflow), outflow: Math.round(outflow) });
+      result.push({
+        week: weekLabel,
+        inflow: Math.round(inflow),
+        outflow: Math.round(outflow),
+      });
     }
     return result;
   }
@@ -376,14 +432,19 @@ export class AnalyticsService extends BaseService<
       }),
       this.prisma.journalEntry.count({
         where: {
-          // buyerId: { not: null },
-          // status: JournalEntryStatus.POSTED,
-          // createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          buyerId: { not: null },
+          status: JournalEntryStatus.POSTED,
+          createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
     ]);
 
-    const alerts: { type: "warning" | "info"; text: string; cta: string; href: string }[] = [];
+    const alerts: {
+      type: "warning" | "info";
+      text: string;
+      cta: string;
+      href: string;
+    }[] = [];
 
     if (overdueAR > 0) {
       alerts.push({
@@ -424,7 +485,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-          }
+          },
         },
       },
       select: { type: true, amount: true },
@@ -439,7 +500,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-          }
+          },
         },
       },
       select: { type: true, amount: true },
@@ -454,7 +515,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-          }
+          },
         },
       },
       select: { type: true, amount: true },
@@ -469,7 +530,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-          }
+          },
         },
       },
       select: { type: true, amount: true },
@@ -491,7 +552,7 @@ export class AnalyticsService extends BaseService<
           is: {
             status: JournalEntryStatus.POSTED,
             date: { gte: start },
-          }
+          },
         },
       },
       select: { type: true, amount: true },
@@ -513,7 +574,7 @@ export class AnalyticsService extends BaseService<
           is: {
             status: JournalEntryStatus.POSTED,
             date: { gte: start },
-          }
+          },
         },
       },
       select: { type: true, amount: true },
