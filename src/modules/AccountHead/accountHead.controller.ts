@@ -59,20 +59,11 @@ export class AccountHeadController extends BaseController {
         : undefined;
 
     const result = await this.service.findManyAccountHead(filters, orderBy);
-
-    return this.sendResponse(
-      res,
-      {
-        page: 0,
-        limit: 0,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrevious: false,
-      },
-      "AccountHeads retrieved successfully",
-      result,
-    );
+    res.send({
+      success: true,
+      message: "AccountHeads retrieved successfully",
+      data: result,
+    });
   };
 
   /**
