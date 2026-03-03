@@ -153,6 +153,10 @@ export const JournalEntryValidation = {
       // ❌ Previously included "CANCELLED" — that status doesn't exist in Prisma schema.
       status: z.enum(["DRAFT", "POSTED"]).optional(),
 
+      dateFrom: z.coerce.date().optional(),
+
+      dateTo: z.coerce.date().optional(),
+
       sortBy: z.enum(["date", "voucherNo", "createdAt"]).default("createdAt"),
 
       sortOrder: z.enum(["asc", "desc"]).default("desc"),

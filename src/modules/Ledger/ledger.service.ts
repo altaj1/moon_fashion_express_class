@@ -327,7 +327,7 @@ export class LedgerService {
     // 1. Total Buyer Dues (Receivables)
     const buyerLines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { is: { status: JournalEntryStatus.POSTED } },
         buyerId: { not: null },
       },
       select: { type: true, amount: true },
@@ -341,7 +341,7 @@ export class LedgerService {
     // 2. Total Supplier Dues (Payables)
     const supplierLines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { is: { status: JournalEntryStatus.POSTED } },
         supplierId: { not: null },
       },
       select: { type: true, amount: true },
@@ -374,7 +374,7 @@ export class LedgerService {
       },
       include: {
         journalLines: {
-          where: { journalEntry: { status: JournalEntryStatus.POSTED } },
+          where: { journalEntry: { is: { status: JournalEntryStatus.POSTED } } },
           select: { type: true, amount: true },
         },
       },
@@ -533,7 +533,11 @@ export class LedgerService {
     const supplierIds = suppliers.map((s) => s.id);
     const lines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
+        journalEntry: {
+          is: {
+            status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+          },
+        },
         supplierId: { in: supplierIds },
       },
     });

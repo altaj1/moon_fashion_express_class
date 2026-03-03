@@ -56,10 +56,10 @@ export class BuyerService extends BaseService<
       ];
     }
 
-    filters = {
+    filters = this.buildWhereClause({
       ...filters,
       ...rest,
-    };
+    });
 
     // PAGINATION CALC
     const skip = (page - 1) * limit;
