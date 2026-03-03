@@ -327,7 +327,7 @@ export class LedgerService {
     // 1. Total Buyer Dues (Receivables)
     const buyerLines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { is: { status: JournalEntryStatus.POSTED } },
         buyerId: { not: null },
       },
       select: { type: true, amount: true },
@@ -341,7 +341,7 @@ export class LedgerService {
     // 2. Total Supplier Dues (Payables)
     const supplierLines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: JournalEntryStatus.POSTED },
+        journalEntry: { is: { status: JournalEntryStatus.POSTED } },
         supplierId: { not: null },
       },
       select: { type: true, amount: true },
@@ -374,7 +374,7 @@ export class LedgerService {
       },
       include: {
         journalLines: {
-          where: { journalEntry: { status: JournalEntryStatus.POSTED } },
+          where: { journalEntry: { is: { status: JournalEntryStatus.POSTED } } },
           select: { type: true, amount: true },
         },
       },
@@ -417,6 +417,8 @@ export class LedgerService {
     if (search) {
       buyerWhere.OR = [
         { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { merchandiser: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
       ];
@@ -439,7 +441,16 @@ export class LedgerService {
       orderBy,
       skip,
       take: limit,
-      select: { id: true, name: true, phone: true, location: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        merchandiser: true,
+        phone: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (buyers.length === 0) {
@@ -500,6 +511,8 @@ export class LedgerService {
     if (search) {
       supplierWhere.OR = [
         { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
       ];
@@ -522,7 +535,15 @@ export class LedgerService {
       orderBy,
       skip,
       take: limit,
-      select: { id: true, name: true, phone: true, location: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (suppliers.length === 0) {
@@ -533,7 +554,11 @@ export class LedgerService {
     const supplierIds = suppliers.map((s) => s.id);
     const lines = await this.prisma.journalLine.findMany({
       where: {
-        journalEntry: { status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] } },
+        journalEntry: {
+          is: {
+            status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+          },
+        },
         supplierId: { in: supplierIds },
       },
     });

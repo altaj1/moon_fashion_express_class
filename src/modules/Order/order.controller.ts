@@ -50,12 +50,13 @@ export class OrderController extends BaseController {
 
   public analytics = async (req: Request, res: Response) => {
     const query = req.validatedQuery || req.query;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, isDeleted } = query;
     this.logAction("analytics", req, { query });
 
     const result = await this.service.analytics(
       startDate as string,
       endDate as string,
+      isDeleted as boolean,
     );
 
     return this.sendResponse(
@@ -68,12 +69,13 @@ export class OrderController extends BaseController {
 
   public analyticsOrdersStatus = async (req: Request, res: Response) => {
     const query = req.validatedQuery || req.query;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, isDeleted } = query;
     this.logAction("analytics", req, { query });
 
     const result = await this.service.analyticsOrdersStatus(
       startDate as string,
       endDate as string,
+      isDeleted as boolean,
     );
 
     return this.sendResponse(

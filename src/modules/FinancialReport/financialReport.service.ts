@@ -38,8 +38,10 @@ export class FinancialReportService {
                 where: {
                     accountHeadId: account.id,
                     journalEntry: {
-                        status: "POSTED",
-                        date: { lt: start },
+                        is: {
+                            status: "POSTED",
+                            date: { lt: start },
+                        },
                     },
                 },
                 _sum: {
@@ -53,7 +55,7 @@ export class FinancialReportService {
                 where: {
                     accountHeadId: account.id,
                     type: "DEBIT",
-                    journalEntry: { status: "POSTED", date: { lt: start } },
+                    journalEntry: { is: { status: "POSTED", date: { lt: start } } },
                 },
                 _sum: { amount: true },
             });
@@ -62,7 +64,7 @@ export class FinancialReportService {
                 where: {
                     accountHeadId: account.id,
                     type: "CREDIT",
-                    journalEntry: { status: "POSTED", date: { lt: start } },
+                    journalEntry: { is: { status: "POSTED", date: { lt: start } } },
                 },
                 _sum: { amount: true },
             });
@@ -76,8 +78,10 @@ export class FinancialReportService {
                     accountHeadId: account.id,
                     type: "DEBIT",
                     journalEntry: {
-                        status: "POSTED",
-                        date: { gte: start, lte: end },
+                        is: {
+                            status: "POSTED",
+                            date: { gte: start, lte: end },
+                        },
                     },
                 },
                 _sum: { amount: true },
@@ -88,8 +92,10 @@ export class FinancialReportService {
                     accountHeadId: account.id,
                     type: "CREDIT",
                     journalEntry: {
-                        status: "POSTED",
-                        date: { gte: start, lte: end },
+                        is: {
+                            status: "POSTED",
+                            date: { gte: start, lte: end },
+                        },
                     },
                 },
                 _sum: { amount: true },

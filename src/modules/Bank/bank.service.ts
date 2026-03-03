@@ -80,7 +80,7 @@ export class BankService extends BaseService<
             by: ['bankId', 'type'],
             where: {
                 bankId: { in: bankIds },
-                journalEntry: { status: 'POSTED' } // Only count confirmed transactions
+                journalEntry: { is: { status: 'POSTED' } } // Only count confirmed transactions
             },
             _sum: {
                 amount: true

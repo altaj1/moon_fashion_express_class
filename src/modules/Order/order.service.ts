@@ -247,20 +247,26 @@ export class OrderService extends BaseService<
     let filters: any = { ...restFilters };
 
     if (search) {
-      filters.OR = [{ remarks: { contains: search, mode: "insensitive" } }];
+      filters.OR = [
+        { remarks: { contains: search, mode: "insensitive" } },
+        { orderNumber: { contains: search, mode: "insensitive" } },
+      ];
     }
     // Status filter
     if (status) {
       filters.status = status;
     }
 
-    if (typeof isDeleted === "boolean") {
-      filters.isDeleted = isDeleted;
-    }
-
     // ProductType filter
     if (productType) {
       filters.productType = productType;
+    }
+
+    // Apply soft-delete and default filters via BaseService
+    filters = this.buildWhereClause(filters);
+
+    if (typeof isDeleted === "boolean") {
+      filters.isDeleted = isDeleted;
     }
     // isInvoice
     if (typeof isInvoice === "boolean") {
@@ -353,9 +359,15 @@ export class OrderService extends BaseService<
       data,
     };
   }
-  public async analytics(startDate?: string, endDate?: string) {
+  public async analytics(
+    startDate?: string,
+    endDate?: string,
+    isDeleted: boolean = false,
+  ) {
     // Build filter
-    const where: any = {};
+    const where: any = {
+      isDeleted,
+    };
 
     if (startDate && endDate) {
       where.orderDate = {
@@ -387,8 +399,14 @@ export class OrderService extends BaseService<
     }));
   }
 
-  public async analyticsOrdersStatus(startDate?: string, endDate?: string) {
-    const where: any = {};
+  public async analyticsOrdersStatus(
+    startDate?: string,
+    endDate?: string,
+    isDeleted: boolean = false,
+  ) {
+    const where: any = {
+      isDeleted,
+    };
 
     if (startDate && endDate) {
       where.orderDate = {

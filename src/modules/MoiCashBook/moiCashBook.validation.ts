@@ -16,19 +16,19 @@ export const MoiCashBookValidation = {
         .max(255),
       employeeId: z.string().uuid("Invalid Employee ID format"),
       companyProfileId: z.string().uuid("Company Profile ID is required"),
-      
+
       // Accounting Links
-      cashAccountId: z.string().uuid().optional(),    // Where cash leaves/enters
+      cashAccountId: z.string().uuid().optional(), // Where cash leaves/enters
       advanceAccountId: z.string().uuid().optional(), // The "Staff Advance" control account
       expenseAccountId: z.string().uuid().optional(), // For SETTLE type with expenses
-      
+
       type: z.enum(["ISSUE", "SETTLE", "EXPENSE"]).default("ISSUE"),
       status: z
         .enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"])
         .default("PENDING"),
       remarks: z.string().max(500).optional(),
       journalEntryId: z.string().uuid().optional(),
-      autoPost: z.boolean().default(true), // Automatically post the journal entry
+      // autoPost: z.boolean().default(true), // Automatically post the journal entry
     })
     .strict(),
 
@@ -46,6 +46,9 @@ export const MoiCashBookValidation = {
       status: z.enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"]).optional(),
       remarks: z.string().max(500).optional(),
       journalEntryId: z.string().uuid().optional(),
+      cashAccountId: z.string().uuid().optional(),
+      advanceAccountId: z.string().uuid().optional(),
+      expenseAccountId: z.string().uuid().optional(),
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {

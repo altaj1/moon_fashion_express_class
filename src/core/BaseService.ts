@@ -50,7 +50,7 @@ export abstract class BaseService<
     this.options = {
       enableSoftDelete: false,
       enableAuditFields: false,
-      defaultPageSize: 10,
+      // defaultPageSize: 10,
       maxPageSize: 1000,
       ...options,
     };
@@ -320,6 +320,7 @@ export abstract class BaseService<
   protected buildWhereClause(filters: any): any {
     if (this.options.enableSoftDelete) {
       return {
+        isDeleted: false,
         ...filters,
       };
     }

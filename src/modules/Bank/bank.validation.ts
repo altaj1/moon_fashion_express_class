@@ -71,7 +71,7 @@ export const BankValidation = {
                 companyProfileId: z.string().uuid().optional(),
 
                 sortBy: z
-                    .enum(["bankName", "accountNumber", "createdAt"])
+                    .enum(["bankName", "accountNumber", "createdAt", "updatedAt"])
                     .default("createdAt"),
 
                 sortOrder: z.enum(["asc", "desc"]).default("desc"),

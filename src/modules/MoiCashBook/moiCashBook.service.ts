@@ -29,7 +29,117 @@ export class MoiCashBookService extends BaseService<
   // =========================================================================
 
   public async create(data: CreateMoiCashBookInput, include?: any) {
-    return super.create(data, include);
+    // Use a transaction to create both the MOI entry and its journal entry atomically
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create the MoiCashBook record
+      const moiEntry = await tx.moiCashBook.create({
+        data: {
+          voucherNo: data.voucherNo,
+          amount: data.amount,
+          purpose: data.purpose,
+          employeeId: data.employeeId,
+          companyProfileId: data.companyProfileId,
+          type: data.type,
+          status: data.status,
+          remarks: data.remarks,
+          cashAccountId: data.cashAccountId || undefined,
+          advanceAccountId: data.advanceAccountId || undefined,
+          expenseAccountId: data.expenseAccountId || undefined,
+        },
+      });
+
+      // 2. Auto-create a DRAFT journal entry if we have enough account info
+      const journalLines = this.buildJournalLines(data);
+
+      if (journalLines.length >= 2) {
+        // Generate a voucher number for the journal
+        const journalVoucherNo = await this.generateJournalVoucherNo(tx, data.type);
+
+        const journalEntry = await tx.journalEntry.create({
+          data: {
+            voucherNo: journalVoucherNo,
+            date: new Date(),
+            category: "JOURNAL",
+            status: "DRAFT",
+            narration: `MOI Cash Book: ${data.type} — ${data.purpose}`,
+            companyProfileId: data.companyProfileId,
+            lines: {
+              create: journalLines,
+            },
+          },
+        });
+
+        // 3. Link the journal entry back to the MOI record
+        await tx.moiCashBook.update({
+          where: { id: moiEntry.id },
+          data: { journalEntryId: journalEntry.id },
+        });
+
+        return { ...moiEntry, journalEntryId: journalEntry.id };
+      }
+
+      return moiEntry;
+    });
+  }
+
+  /**
+   * Build double-entry journal lines based on transaction type.
+   * ISSUE:   DR advanceAccount (money given to employee)  / CR cashAccount (cash goes out)
+   * SETTLE:  DR cashAccount (cash comes back)             / CR advanceAccount (advance reduced)
+   * EXPENSE: DR expenseAccount (expense incurred)         / CR cashAccount (cash goes out)
+   */
+  private buildJournalLines(data: CreateMoiCashBookInput) {
+    const lines: { accountHeadId: string; type: "DEBIT" | "CREDIT"; amount: number }[] = [];
+
+    if (data.type === "ISSUE") {
+      if (data.advanceAccountId && data.cashAccountId) {
+        lines.push(
+          { accountHeadId: data.advanceAccountId, type: "DEBIT", amount: data.amount },
+          { accountHeadId: data.cashAccountId, type: "CREDIT", amount: data.amount },
+        );
+      }
+    } else if (data.type === "SETTLE") {
+      if (data.cashAccountId && data.advanceAccountId) {
+        lines.push(
+          { accountHeadId: data.cashAccountId, type: "DEBIT", amount: data.amount },
+          { accountHeadId: data.advanceAccountId, type: "CREDIT", amount: data.amount },
+        );
+      }
+    } else if (data.type === "EXPENSE") {
+      if (data.expenseAccountId && data.cashAccountId) {
+        lines.push(
+          { accountHeadId: data.expenseAccountId, type: "DEBIT", amount: data.amount },
+          { accountHeadId: data.cashAccountId, type: "CREDIT", amount: data.amount },
+        );
+      }
+    }
+
+    return lines;
+  }
+
+  /**
+   * Generate a sequential voucher number for auto-created journal entries.
+   */
+  private async generateJournalVoucherNo(tx: any, type: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = "JV";
+
+    const lastEntry = await tx.journalEntry.findFirst({
+      where: {
+        voucherNo: { startsWith: `${prefix}-${year}-` },
+      },
+      orderBy: { voucherNo: "desc" },
+    });
+
+    let sequence = 1;
+    if (lastEntry?.voucherNo) {
+      const parts = lastEntry.voucherNo.split("-");
+      if (parts.length === 3) {
+        sequence = parseInt(parts[2], 10) + 1;
+      }
+    }
+
+    return `${prefix}-${year}-${sequence.toString().padStart(4, "0")}`;
   }
 
   public async findMany(
@@ -236,6 +346,15 @@ export class MoiCashBookService extends BaseService<
               lastName: true,
               designation: true,
             },
+          },
+          cashAccount: {
+            select: { id: true, name: true, type: true },
+          },
+          advanceAccount: {
+            select: { id: true, name: true, type: true },
+          },
+          expenseAccount: {
+            select: { id: true, name: true, type: true },
           },
         },
       }),

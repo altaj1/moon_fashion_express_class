@@ -3,6 +3,7 @@ import {
   AccountType,
   JournalEntryStatus,
   JournalEntryType,
+  OrderStatus,
   PrismaClient,
 } from "@/generated/prisma/client";
 import { PaginationOptions } from "@/types/types";
@@ -24,14 +25,9 @@ export class AnalyticsService extends BaseService<
   }
 
   protected getModel() {
-    // @ts-ignore - The model 'analytics' might not exist in PrismaClient types yet
+    // @ts-ignore
     return this.prisma.analytics;
   }
-
-  // =========================================================================
-  // Public API - Exposing BaseService methods
-  // Since BaseService methods are protected, we must expose them here
-  // =========================================================================
 
   public async getAllAnalytics(startDate?: string, endDate?: string) {
     const dateFilter: any = {};
@@ -42,16 +38,18 @@ export class AnalyticsService extends BaseService<
     }
 
     const buyerWhere = startDate && endDate ? { createdAt: dateFilter } : {};
-
     const userWhere = startDate && endDate ? { createdAt: dateFilter } : {};
-
     const orderWhere = startDate && endDate ? { orderDate: dateFilter } : {};
 
-    // Run counts in parallel 🚀
     const [buyersCount, usersCount, ordersCount] = await Promise.all([
-      this.prisma.buyer.count({ where: buyerWhere }),
-      this.prisma.user.count({ where: userWhere }),
-      this.prisma.order.count({ where: orderWhere }),
+      this.prisma.buyer.count({ where: { ...buyerWhere, isDeleted: false } }),
+      this.prisma.user.count({ where: { ...userWhere, isDeleted: false } }),
+      this.prisma.order.count({
+        where: {
+          ...orderWhere,
+          isDeleted: false,
+        },
+      }),
     ]);
 
     return {
@@ -99,9 +97,6 @@ export class AnalyticsService extends BaseService<
     };
   }
 
-  // =====================================================
-  // REVENUE TREND — last 12 months month by month
-  // =====================================================
   public async getRevenueTrend() {
     const months: { month: string; revenue: number; expense: number }[] = [];
     const now = new Date();
@@ -110,20 +105,33 @@ export class AnalyticsService extends BaseService<
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      const label = start.toLocaleString("default", { month: "short", year: "2-digit" });
+      const label = start.toLocaleString("default", {
+        month: "short",
+        year: "2-digit",
+      });
 
       const [revLines, expLines] = await Promise.all([
         this.prisma.journalLine.findMany({
           where: {
             accountHead: { type: AccountType.INCOME },
-            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+            journalEntry: {
+              is: {
+                status: JournalEntryStatus.POSTED,
+                date: { gte: start, lte: end },
+              },
+            },
           },
           select: { type: true, amount: true },
         }),
         this.prisma.journalLine.findMany({
           where: {
             accountHead: { type: AccountType.EXPENSE },
-            journalEntry: { status: JournalEntryStatus.POSTED, date: { gte: start, lte: end } },
+            journalEntry: {
+              is: {
+                status: JournalEntryStatus.POSTED,
+                date: { gte: start, lte: end },
+              },
+            },
           },
           select: { type: true, amount: true },
         }),
@@ -138,40 +146,68 @@ export class AnalyticsService extends BaseService<
     return months;
   }
 
-  // =====================================================
-  // ORDER TREND — daily order count for a period
-  // =====================================================
-  public async getOrderTrend(days = 30) {
+  public async getOrderTrend(startDate?: string, endDate?: string, days = 30) {
     const result: { date: string; orders: number }[] = [];
-    const now = new Date();
+    let rangeStart: Date;
+    let rangeEnd: Date;
 
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+    if (startDate && endDate) {
+      rangeStart = new Date(startDate);
+      rangeEnd = new Date(endDate);
+    } else {
+      rangeEnd = new Date();
+      rangeStart = new Date();
+      rangeStart.setDate(rangeEnd.getDate() - (days - 1));
+    }
+
+    const current = new Date(rangeStart);
+    while (current <= rangeEnd) {
+      const dayStart = new Date(
+        current.getFullYear(),
+        current.getMonth(),
+        current.getDate(),
+        0,
+        0,
+        0,
+      );
+      const dayEnd = new Date(
+        current.getFullYear(),
+        current.getMonth(),
+        current.getDate(),
+        23,
+        59,
+        59,
+      );
 
       const count = await this.prisma.order.count({
-        where: { orderDate: { gte: start, lte: end } },
+        where: { orderDate: { gte: dayStart, lte: dayEnd }, isDeleted: false },
       });
 
       result.push({
-        date: start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+        date: dayStart.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+        }),
         orders: count,
       });
+
+      current.setDate(current.getDate() + 1);
     }
-    // Only return data points where orders > 0 plus boundary points for chart shape
     return result;
   }
 
-  // =====================================================
-  // TOP BUYERS — by revenue (sum of DEBIT journal lines)
-  // =====================================================
-  public async getTopBuyers(limit = 5) {
+  public async getTopBuyers(limit = 5, startDate?: string, endDate?: string) {
     const buyers = await this.prisma.buyer.findMany({
       where: { isDeleted: false },
       select: { id: true, name: true },
     });
+
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      dateFilter.lte = new Date(endDate);
+    }
+    const hasDateFilter = startDate && endDate;
 
     const results: { name: string; revenue: number; orders: number }[] = [];
 
@@ -181,14 +217,28 @@ export class AnalyticsService extends BaseService<
           where: {
             buyerId: buyer.id,
             type: JournalEntryType.DEBIT,
-            journalEntry: { status: JournalEntryStatus.POSTED },
+            journalEntry: {
+              is: {
+                status: JournalEntryStatus.POSTED,
+                ...(hasDateFilter ? { date: dateFilter } : {}),
+              },
+            },
           },
           select: { amount: true },
         }),
-        this.prisma.order.count({ where: { buyerId: buyer.id } }),
+        this.prisma.order.count({
+          where: {
+            buyerId: buyer.id,
+            isDeleted: false,
+            ...(hasDateFilter ? { orderDate: dateFilter } : {}),
+          },
+        }),
       ]);
 
-      const revenue = lines.reduce((sum, l) => sum + Number(l.amount), 0);
+      const revenue = lines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
       if (revenue > 0 || orderCount > 0) {
         results.push({ name: buyer.name, revenue, orders: orderCount });
       }
@@ -197,9 +247,42 @@ export class AnalyticsService extends BaseService<
     return results.sort((a, b) => b.revenue - a.revenue).slice(0, limit);
   }
 
-  // =====================================================
-  // AR AGING — receivables bucketed by overdue days
-  // =====================================================
+  public async getPayableFlow(weeks = 6) {
+    const result: { week: string; payable: number }[] = [];
+    const now = new Date();
+
+    for (let i = weeks - 1; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7 - 6);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      const weekLabel = `W${weeks - i}`;
+
+      const apLines = await this.prisma.journalLine.findMany({
+        where: {
+          supplierId: { not: null },
+          type: JournalEntryType.CREDIT,
+          journalEntry: {
+            is: {
+              status: JournalEntryStatus.POSTED,
+              date: { gte: weekStart, lte: weekEnd },
+            },
+          },
+        },
+        select: { amount: true },
+      });
+
+      const payable = apLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
+      result.push({ week: weekLabel, payable: Math.round(payable) });
+    }
+    return result;
+  }
+
   public async getARaging() {
     const entries = await this.prisma.journalEntry.findMany({
       where: {
@@ -218,20 +301,66 @@ export class AnalyticsService extends BaseService<
 
     const now = new Date();
     entries.forEach((entry) => {
-      const ageDays = Math.floor((now.getTime() - new Date(entry.createdAt).getTime()) / 86400000);
-      const net = entry.lines.reduce((sum, l) =>
-        l.type === JournalEntryType.DEBIT ? sum + Number(l.amount) : sum - Number(l.amount), 0);
-      if (net <= 0) return; // Fully paid, skip
-      const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max);
+      const ageDays = Math.floor(
+        (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
+      );
+      const net = entry.lines.reduce(
+        (sum, l) =>
+          l.type === JournalEntryType.DEBIT
+            ? sum + Number(l.amount)
+            : sum - Number(l.amount),
+        0,
+      );
+      if (net <= 0) return;
+      const bucket = buckets.find((b) => ageDays >= b.min && ageDays <= b.max);
       if (bucket) bucket.amount += net;
     });
 
-    return buckets.map(b => ({ label: b.label, amount: Math.round(b.amount) }));
+    return buckets.map((b) => ({
+      label: b.label,
+      amount: Math.round(b.amount),
+    }));
   }
 
-  // =====================================================
-  // CASH FLOW — 6 weekly inflow vs outflow buckets
-  // =====================================================
+  public async getAPaging() {
+    const entries = await this.prisma.journalEntry.findMany({
+      where: {
+        supplierId: { not: null },
+        status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+      },
+      include: { lines: { select: { type: true, amount: true } } },
+    });
+
+    const buckets = [
+      { label: "0–30 days", min: 0, max: 30, amount: 0 },
+      { label: "31–60 days", min: 31, max: 60, amount: 0 },
+      { label: "61–90 days", min: 61, max: 90, amount: 0 },
+      { label: "90+ days", min: 91, max: Infinity, amount: 0 },
+    ];
+
+    const now = new Date();
+    entries.forEach((entry) => {
+      const ageDays = Math.floor(
+        (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
+      );
+      const net = entry.lines.reduce(
+        (sum: number, l: any) =>
+          l.type === JournalEntryType.CREDIT
+            ? sum + Number(l.amount)
+            : sum - Number(l.amount),
+        0,
+      );
+      if (net <= 0) return;
+      const bucket = buckets.find((b) => ageDays >= b.min && ageDays <= b.max);
+      if (bucket) bucket.amount += net;
+    });
+
+    return buckets.map((b) => ({
+      label: b.label,
+      amount: Math.round(b.amount),
+    }));
+  }
+
   public async getCashFlow(weeks = 6) {
     const result: { week: string; inflow: number; outflow: number }[] = [];
     const now = new Date();
@@ -250,8 +379,10 @@ export class AnalyticsService extends BaseService<
           where: {
             type: JournalEntryType.DEBIT,
             journalEntry: {
-              status: JournalEntryStatus.POSTED,
-              date: { gte: weekStart, lte: weekEnd },
+              is: {
+                status: JournalEntryStatus.POSTED,
+                date: { gte: weekStart, lte: weekEnd },
+              },
             },
           },
           select: { amount: true },
@@ -260,31 +391,42 @@ export class AnalyticsService extends BaseService<
           where: {
             type: JournalEntryType.CREDIT,
             journalEntry: {
-              status: JournalEntryStatus.POSTED,
-              date: { gte: weekStart, lte: weekEnd },
+              is: {
+                status: JournalEntryStatus.POSTED,
+                date: { gte: weekStart, lte: weekEnd },
+              },
             },
           },
           select: { amount: true },
         }),
       ]);
 
-      const inflow = debitLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
-      const outflow = creditLines.reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+      const inflow = debitLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
+      const outflow = creditLines.reduce(
+        (sum: number, l: any) => sum + Number(l.amount),
+        0,
+      );
 
-      result.push({ week: weekLabel, inflow: Math.round(inflow), outflow: Math.round(outflow) });
+      result.push({
+        week: weekLabel,
+        inflow: Math.round(inflow),
+        outflow: Math.round(outflow),
+      });
     }
     return result;
   }
 
-  // =====================================================
-  // DASHBOARD ALERTS — actionable items for manager
-  // =====================================================
   public async getDashboardAlerts() {
     const [pendingOrders, overdueAR] = await Promise.all([
       this.prisma.order.count({
-        where: { status: { in: ["PENDING", "DRAFT"] } },
+        where: {
+          status: { in: [OrderStatus.PENDING, OrderStatus.DRAFT] },
+          isDeleted: false,
+        },
       }),
-      // Journal entries linked to buyers older than 30 days
       this.prisma.journalEntry.count({
         where: {
           buyerId: { not: null },
@@ -294,7 +436,12 @@ export class AnalyticsService extends BaseService<
       }),
     ]);
 
-    const alerts: { type: "warning" | "info"; text: string; cta: string; href: string }[] = [];
+    const alerts: {
+      type: "warning" | "info";
+      text: string;
+      cta: string;
+      href: string;
+    }[] = [];
 
     if (overdueAR > 0) {
       alerts.push({
@@ -307,7 +454,7 @@ export class AnalyticsService extends BaseService<
 
     if (pendingOrders > 0) {
       alerts.push({
-        type: "info",
+        type: "warning",
         text: `${pendingOrders} order${pendingOrders > 1 ? "s are" : " is"} awaiting approval`,
         cta: "Review Orders",
         href: "/order-management/orders",
@@ -317,10 +464,6 @@ export class AnalyticsService extends BaseService<
     return alerts;
   }
 
-  // =====================================================
-  // DOUBLE ENTRY HELPER
-  // =====================================================
-
   private calculateBalance(lines: { type: JournalEntryType; amount: any }[]) {
     return lines.reduce((total, line) => {
       return line.type === JournalEntryType.DEBIT
@@ -328,10 +471,6 @@ export class AnalyticsService extends BaseService<
         : total - Number(line.amount);
     }, 0);
   }
-
-  // =====================================================
-  // CASH
-  // =====================================================
 
   private async getCashBalance() {
     const lines = await this.prisma.journalLine.findMany({
@@ -341,72 +480,60 @@ export class AnalyticsService extends BaseService<
           name: { contains: "cash", mode: "insensitive" },
         },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
+          is: {
+            status: JournalEntryStatus.POSTED,
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return this.calculateBalance(lines);
   }
-
-  // =====================================================
-  // BANK
-  // =====================================================
 
   private async getBankBalance() {
     const lines = await this.prisma.journalLine.findMany({
       where: {
         bankId: { not: null },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
+          is: {
+            status: JournalEntryStatus.POSTED,
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return this.calculateBalance(lines);
   }
-
-  // =====================================================
-  // RECEIVABLE
-  // =====================================================
 
   private async getReceivable() {
     const lines = await this.prisma.journalLine.findMany({
       where: {
         buyerId: { not: null },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
+          is: {
+            status: JournalEntryStatus.POSTED,
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return this.calculateBalance(lines);
   }
-
-  // =====================================================
-  // PAYABLE
-  // =====================================================
 
   private async getPayable() {
     const lines = await this.prisma.journalLine.findMany({
       where: {
         supplierId: { not: null },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
+          is: {
+            status: JournalEntryStatus.POSTED,
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return Math.abs(this.calculateBalance(lines));
   }
-
-  // =====================================================
-  // MONTHLY REVENUE
-  // =====================================================
 
   private async getMonthlyRevenue() {
     const start = new Date();
@@ -419,19 +546,16 @@ export class AnalyticsService extends BaseService<
           type: AccountType.INCOME,
         },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
-          date: { gte: start },
+          is: {
+            status: JournalEntryStatus.POSTED,
+            date: { gte: start },
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return Math.abs(this.calculateBalance(lines));
   }
-
-  // =====================================================
-  // MONTHLY EXPENSE
-  // =====================================================
 
   private async getMonthlyExpense() {
     const start = new Date();
@@ -444,19 +568,16 @@ export class AnalyticsService extends BaseService<
           type: AccountType.EXPENSE,
         },
         journalEntry: {
-          status: JournalEntryStatus.POSTED,
-          date: { gte: start },
+          is: {
+            status: JournalEntryStatus.POSTED,
+            date: { gte: start },
+          },
         },
       },
       select: { type: true, amount: true },
     });
-
     return this.calculateBalance(lines);
   }
-
-  // =====================================================
-  // LOAN OUTSTANDING
-  // =====================================================
 
   private async getLoanOutstanding() {
     const loans = await this.prisma.loan.findMany({
@@ -473,17 +594,12 @@ export class AnalyticsService extends BaseService<
     }, 0);
   }
 
-  // =====================================================
-  // EMPLOYEE ADVANCE
-  // =====================================================
-
   private async getEmployeeAdvanceOutstanding() {
     const advances = await this.prisma.moiCashBook.findMany({
       where: {
-        status: { in: ["PENDING", "APPROVED"] },
+        status: { in: ["PENDING", "APPROVED"] as any },
       },
     });
-
     return advances.reduce((sum, adv) => sum + Number(adv.amount), 0);
   }
 
