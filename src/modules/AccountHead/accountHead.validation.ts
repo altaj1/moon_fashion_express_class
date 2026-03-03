@@ -62,7 +62,9 @@ export const AccountHeadValidation = {
         .enum(["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"])
         .optional(),
 
-      sortBy: z.enum(["name", "code", "createdAt"]).default("createdAt"),
+      sortBy: z
+        .enum(["name", "code", "createdAt", "updatedAt"])
+        .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
       isDeleted: z.preprocess(
         (val) => val === "true",

@@ -37,9 +37,17 @@ export class JournalEntryController extends BaseController {
     public getAll = async (req: Request, res: Response) => {
         const pagination = this.extractPaginationParams(req);
         const query = req.validatedQuery || req.query;
-        const { search, category, status } = query;
+        const {
+            search,
+            category,
+            status,
+            dateFrom,
+            dateTo,
+            sortBy,
+            sortOrder,
+        } = query;
 
-        this.logAction("getAll", req, { pagination });
+        this.logAction("getAll", req, { pagination, query });
 
         const filters: any = {};
         if (category) {
@@ -54,8 +62,24 @@ export class JournalEntryController extends BaseController {
                 { narration: { contains: search, mode: "insensitive" } },
             ];
         }
+        if (dateFrom || dateTo) {
+            filters.date = {};
+            if (dateFrom) {
+                filters.date.gte = new Date(dateFrom);
+            }
+            if (dateTo) {
+                filters.date.lte = new Date(dateTo);
+            }
+        }
 
-        const result = await this.service.findMany(filters, pagination, undefined, {
+        const orderBy =
+            sortBy && sortOrder
+                ? {
+                    [sortBy]: sortOrder,
+                }
+                : undefined;
+
+        const result = await this.service.findMany(filters, pagination, orderBy, {
             lines: { include: { accountHead: true } },
             buyer: true,
             supplier: true,

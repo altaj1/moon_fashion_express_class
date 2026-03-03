@@ -320,6 +320,7 @@ export abstract class BaseService<
   protected buildWhereClause(filters: any): any {
     if (this.options.enableSoftDelete) {
       return {
+        isDeleted: false,
         ...filters,
       };
     }

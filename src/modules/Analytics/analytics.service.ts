@@ -57,7 +57,7 @@ export class AnalyticsService extends BaseService<
           ...orderWhere,
           isDeleted: false,
           status: {
-            notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+            in: [OrderStatus.PENDING, OrderStatus.DRAFT],
           },
         },
       }),
@@ -128,7 +128,6 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: start, lte: end },
-              isDeleted: false,
             },
           },
           select: { type: true, amount: true },
@@ -139,7 +138,6 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: start, lte: end },
-              isDeleted: false,
             },
           },
           select: { type: true, amount: true },
@@ -220,7 +218,6 @@ export class AnalyticsService extends BaseService<
             type: JournalEntryType.DEBIT,
             journalEntry: {
               status: JournalEntryStatus.POSTED,
-              isDeleted: false, // Added isDeleted: false
               ...(hasDateFilter ? { date: dateFilter } : {}),
             },
           },
@@ -268,7 +265,6 @@ export class AnalyticsService extends BaseService<
           journalEntry: {
             status: JournalEntryStatus.POSTED,
             date: { gte: weekStart, lte: weekEnd },
-            isDeleted: false, // Added isDeleted: false
           },
         },
         select: { amount: true },
@@ -288,7 +284,6 @@ export class AnalyticsService extends BaseService<
       where: {
         buyerId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
-        isDeleted: false, // Added isDeleted: false
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -321,7 +316,6 @@ export class AnalyticsService extends BaseService<
       where: {
         supplierId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
-        isDeleted: false, // Added isDeleted: false
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -369,7 +363,6 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: weekStart, lte: weekEnd },
-              isDeleted: false, // Added isDeleted: false
             },
           },
           select: { amount: true },
@@ -380,7 +373,6 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               status: JournalEntryStatus.POSTED,
               date: { gte: weekStart, lte: weekEnd },
-              isDeleted: false, // Added isDeleted: false
             },
           },
           select: { amount: true },
@@ -401,14 +393,16 @@ export class AnalyticsService extends BaseService<
   public async getDashboardAlerts() {
     const [pendingOrders, overdueAR] = await Promise.all([
       this.prisma.order.count({
-        where: { status: { in: ["PENDING", "DRAFT"] }, isDeleted: false },
+        where: {
+          status: { in: [OrderStatus.PENDING, OrderStatus.DRAFT] },
+          isDeleted: false,
+        },
       }),
       // Journal entries linked to buyers older than 30 days
       this.prisma.journalEntry.count({
         where: {
           buyerId: { not: null },
           status: JournalEntryStatus.POSTED,
-          isDeleted: false,
           createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
@@ -427,7 +421,7 @@ export class AnalyticsService extends BaseService<
 
     if (pendingOrders > 0) {
       alerts.push({
-        type: "info",
+        type: "warning",
         text: `${pendingOrders} order${pendingOrders > 1 ? "s are" : " is"} awaiting approval`,
         cta: "Review Orders",
         href: "/order-management/orders",
@@ -462,7 +456,6 @@ export class AnalyticsService extends BaseService<
         },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -481,7 +474,6 @@ export class AnalyticsService extends BaseService<
         bankId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -500,7 +492,6 @@ export class AnalyticsService extends BaseService<
         buyerId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -519,7 +510,6 @@ export class AnalyticsService extends BaseService<
         supplierId: { not: null },
         journalEntry: {
           status: JournalEntryStatus.POSTED,
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -545,7 +535,6 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           status: JournalEntryStatus.POSTED,
           date: { gte: start },
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -571,7 +560,6 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           status: JournalEntryStatus.POSTED,
           date: { gte: start },
-          isDeleted: false,
         },
       },
       select: { type: true, amount: true },
@@ -607,7 +595,6 @@ export class AnalyticsService extends BaseService<
     const advances = await this.prisma.moiCashBook.findMany({
       where: {
         status: { in: ["PENDING", "APPROVED"] },
-        isDeleted: false,
       },
     });
 

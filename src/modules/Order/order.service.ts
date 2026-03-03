@@ -254,13 +254,16 @@ export class OrderService extends BaseService<
       filters.status = status;
     }
 
-    if (typeof isDeleted === "boolean") {
-      filters.isDeleted = isDeleted;
-    }
-
     // ProductType filter
     if (productType) {
       filters.productType = productType;
+    }
+
+    // Apply soft-delete and default filters via BaseService
+    filters = this.buildWhereClause(filters);
+
+    if (typeof isDeleted === "boolean") {
+      filters.isDeleted = isDeleted;
     }
     // isInvoice
     if (typeof isInvoice === "boolean") {
