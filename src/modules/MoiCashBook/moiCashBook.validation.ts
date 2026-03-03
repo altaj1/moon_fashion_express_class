@@ -46,6 +46,9 @@ export const MoiCashBookValidation = {
       status: z.enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"]).optional(),
       remarks: z.string().max(500).optional(),
       journalEntryId: z.string().uuid().optional(),
+      cashAccountId: z.string().uuid().optional(),
+      advanceAccountId: z.string().uuid().optional(),
+      expenseAccountId: z.string().uuid().optional(),
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {
