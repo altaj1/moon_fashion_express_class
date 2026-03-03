@@ -73,9 +73,9 @@ export class InvoiceService extends BaseService<
 
         ...(status && { status }),
       };
-
+      console.log({ prismaData });
       const result = await super.create(prismaData, include);
-      
+
       // Update order and fetch detailed info for journal calculation
       const updateOrderIsInvoice = await prisma.order.update({
         where: { id: orderId },
@@ -87,9 +87,9 @@ export class InvoiceService extends BaseService<
               fabricItem: true,
               labelItem: true,
               cartonItem: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       // =========================================================
@@ -107,18 +107,18 @@ export class InvoiceService extends BaseService<
 
           // Find standard account heads for Accounts Receivable and Sales Revenue
           const arAccount = await prisma.accountHead.findFirst({
-            where: { 
-              name: { contains: "Accounts Receivable", mode: "insensitive" }, 
+            where: {
+              name: { contains: "Accounts Receivable", mode: "insensitive" },
               companyProfileId: updateOrderIsInvoice.companyProfileId,
-              isDeleted: false 
-            }
+              isDeleted: false,
+            },
           });
           const salesAccount = await prisma.accountHead.findFirst({
-            where: { 
-              name: { contains: "Sales Revenue", mode: "insensitive" }, 
+            where: {
+              name: { contains: "Sales Revenue", mode: "insensitive" },
               companyProfileId: updateOrderIsInvoice.companyProfileId,
-              isDeleted: false 
-            }
+              isDeleted: false,
+            },
           });
 
           if (arAccount && salesAccount && totalAmount > 0) {
@@ -133,18 +133,21 @@ export class InvoiceService extends BaseService<
                 {
                   accountHeadId: arAccount.id,
                   type: "DEBIT", // Buyer owes us money
-                  amount: totalAmount
+                  amount: totalAmount,
                 },
                 {
                   accountHeadId: salesAccount.id,
                   type: "CREDIT", // We earned revenue
-                  amount: totalAmount
-                }
-              ]
+                  amount: totalAmount,
+                },
+              ],
             } as any);
           }
         } catch (journalErr) {
-          console.error("Failed to auto-create journal entry for invoice:", journalErr);
+          console.error(
+            "Failed to auto-create journal entry for invoice:",
+            journalErr,
+          );
         }
       }
 
