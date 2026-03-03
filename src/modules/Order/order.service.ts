@@ -247,7 +247,10 @@ export class OrderService extends BaseService<
     let filters: any = { ...restFilters };
 
     if (search) {
-      filters.OR = [{ remarks: { contains: search, mode: "insensitive" } }];
+      filters.OR = [
+        { remarks: { contains: search, mode: "insensitive" } },
+        { orderNumber: { contains: search, mode: "insensitive" } },
+      ];
     }
     // Status filter
     if (status) {
