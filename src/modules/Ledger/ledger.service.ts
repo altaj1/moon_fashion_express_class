@@ -270,21 +270,42 @@ export class LedgerService {
     const sortBy = query.sortBy || "createdAt";
     const sortOrder = (query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
 
+    // Map parameters from the filters object if they exist, or fallback to top-level query
+    const startDate = query.startDate || query.filters?.startDate;
+    const endDate = query.endDate || query.filters?.endDate;
+
     const where: any = {};
-    if (query.startDate || query.endDate) {
+    if (startDate || endDate) {
       where.date = {};
-      if (query.startDate) where.date.gte = new Date(query.startDate);
-      if (query.endDate) where.date.lte = new Date(query.endDate);
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
     }
     if (query.category) where.category = query.category;
 
-    // Search across voucherNo and narration
+    // Search across voucherNo, narration, buyer/supplier names, and account names
     if (search) {
       where.OR = [
         { voucherNo: { contains: search, mode: "insensitive" } },
         { narration: { contains: search, mode: "insensitive" } },
-        { buyer: { name: { contains: search, mode: "insensitive" } } },
-        { supplier: { name: { contains: search, mode: "insensitive" } } },
+        {
+          buyer: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+        {
+          supplier: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+        {
+          lines: {
+            some: {
+              accountHead: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        },
       ];
     }
 
