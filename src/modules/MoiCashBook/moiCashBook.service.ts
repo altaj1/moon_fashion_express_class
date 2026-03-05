@@ -31,6 +31,8 @@ export class MoiCashBookService extends BaseService<
 
   public async create(data: CreateMoiCashBookInput, include?: any) {
     // Use a transaction to create both the MOI entry and its journal entry atomically
+
+    const { lines } = data;
     return this.prisma.$transaction(async (tx) => {
       // 1. Create the MoiCashBook record
       const moiEntry = await tx.moiCashBook.create({
@@ -50,9 +52,8 @@ export class MoiCashBookService extends BaseService<
       });
 
       // 2. Auto-create a DRAFT journal entry if we have enough account info
-      const journalLines = await this.buildJournalLines(data);
-      console.log({ journalLines });
-      if (journalLines?.length >= 2) {
+
+      if (lines?.length >= 2) {
         // Generate a voucher number for the journal
         const journalVoucherNo = await this.generateJournalVoucherNo(
           tx,
@@ -65,15 +66,14 @@ export class MoiCashBookService extends BaseService<
             date: new Date(),
             category: "JOURNAL",
             status: "DRAFT",
-            // narration: `MOI Cash Book: ${data.type} — ${data.purpose}`,
-            narration: `Cash Book: For testing purpose only`,
+            narration: `MOI Cash Book: ${data.type} — ${data.purpose}`,
             companyProfileId: data.companyProfileId,
             lines: {
-              create: journalLines,
+              create: lines,
             },
           },
         });
-        console.log({ journalEntry });
+
         // 3. Link the journal entry back to the MOI record
         await tx.moiCashBook.update({
           where: { id: moiEntry.id },
@@ -93,29 +93,6 @@ export class MoiCashBookService extends BaseService<
    * SETTLE:  DR cashAccount (cash comes back)             / CR advanceAccount (advance reduced)
    * EXPENSE: DR expenseAccount (expense incurred)         / CR cashAccount (cash goes out)
    */
-  private async buildJournalLines(data: CreateMoiCashBookInput) {
-    const accountsHead = await prisma.accountHead.findMany({
-      where: {
-        id: {
-          in: [
-            data.cashAccountId || "",
-            data.expenseAccountId || "",
-            data.expenseAccountId || "",
-          ],
-        },
-      },
-    });
-    console.log({ accountsHead });
-    const journalLines = accountsHead.map((line) => {
-      return {
-        accountHeadId: line.id,
-        type: "DEBIT",
-        amount: data.amount,
-      };
-    });
-
-    return journalLines;
-  }
 
   /**
    * Generate a sequential voucher number for auto-created journal entries.
