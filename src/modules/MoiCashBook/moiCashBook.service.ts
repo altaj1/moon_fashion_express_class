@@ -5,6 +5,7 @@ import {
   CreateMoiCashBookInput,
   UpdateMoiCashBookInput,
 } from "./moiCashBook.validation";
+import { prisma } from "@/lib/prisma";
 
 export class MoiCashBookService extends BaseService<
   any,
@@ -30,6 +31,8 @@ export class MoiCashBookService extends BaseService<
 
   public async create(data: CreateMoiCashBookInput, include?: any) {
     // Use a transaction to create both the MOI entry and its journal entry atomically
+
+    const { lines } = data;
     return this.prisma.$transaction(async (tx) => {
       // 1. Create the MoiCashBook record
       const moiEntry = await tx.moiCashBook.create({
@@ -49,11 +52,13 @@ export class MoiCashBookService extends BaseService<
       });
 
       // 2. Auto-create a DRAFT journal entry if we have enough account info
-      const journalLines = this.buildJournalLines(data);
 
-      if (journalLines.length >= 2) {
+      if (lines?.length >= 2) {
         // Generate a voucher number for the journal
-        const journalVoucherNo = await this.generateJournalVoucherNo(tx, data.type);
+        const journalVoucherNo = await this.generateJournalVoucherNo(
+          tx,
+          data.type,
+        );
 
         const journalEntry = await tx.journalEntry.create({
           data: {
@@ -64,7 +69,7 @@ export class MoiCashBookService extends BaseService<
             narration: `MOI Cash Book: ${data.type} — ${data.purpose}`,
             companyProfileId: data.companyProfileId,
             lines: {
-              create: journalLines,
+              create: lines,
             },
           },
         });
@@ -88,39 +93,14 @@ export class MoiCashBookService extends BaseService<
    * SETTLE:  DR cashAccount (cash comes back)             / CR advanceAccount (advance reduced)
    * EXPENSE: DR expenseAccount (expense incurred)         / CR cashAccount (cash goes out)
    */
-  private buildJournalLines(data: CreateMoiCashBookInput) {
-    const lines: { accountHeadId: string; type: "DEBIT" | "CREDIT"; amount: number }[] = [];
-
-    if (data.type === "ISSUE") {
-      if (data.advanceAccountId && data.cashAccountId) {
-        lines.push(
-          { accountHeadId: data.advanceAccountId, type: "DEBIT", amount: data.amount },
-          { accountHeadId: data.cashAccountId, type: "CREDIT", amount: data.amount },
-        );
-      }
-    } else if (data.type === "SETTLE") {
-      if (data.cashAccountId && data.advanceAccountId) {
-        lines.push(
-          { accountHeadId: data.cashAccountId, type: "DEBIT", amount: data.amount },
-          { accountHeadId: data.advanceAccountId, type: "CREDIT", amount: data.amount },
-        );
-      }
-    } else if (data.type === "EXPENSE") {
-      if (data.expenseAccountId && data.cashAccountId) {
-        lines.push(
-          { accountHeadId: data.expenseAccountId, type: "DEBIT", amount: data.amount },
-          { accountHeadId: data.cashAccountId, type: "CREDIT", amount: data.amount },
-        );
-      }
-    }
-
-    return lines;
-  }
 
   /**
    * Generate a sequential voucher number for auto-created journal entries.
    */
-  private async generateJournalVoucherNo(tx: any, type: string): Promise<string> {
+  private async generateJournalVoucherNo(
+    tx: any,
+    type: string,
+  ): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = "JV";
 

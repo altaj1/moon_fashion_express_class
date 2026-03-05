@@ -21,7 +21,20 @@ export const MoiCashBookValidation = {
       cashAccountId: z.string().uuid().optional(), // Where cash leaves/enters
       advanceAccountId: z.string().uuid().optional(), // The "Staff Advance" control account
       expenseAccountId: z.string().uuid().optional(), // For SETTLE type with expenses
-
+      lines: z
+        .array(
+          z.object({
+            accountHeadId: z.string().uuid("Invalid account head ID"),
+            type: z.enum(["DEBIT", "CREDIT"]),
+            amount: z.preprocess(
+              (val) => stringToNumber(val),
+              z.number().positive("Amount must be positive"),
+            ),
+            // Sub-ledger identifiers (optional — set when the line involves a specific entity)
+            bankId: z.string().uuid("Invalid bank ID").optional(),
+          }),
+        )
+        .min(2, "At least two journal lines required"),
       type: z.enum(["ISSUE", "SETTLE", "EXPENSE"]).default("ISSUE"),
       status: z
         .enum(["PENDING", "APPROVED", "SETTLED", "REJECTED"])
