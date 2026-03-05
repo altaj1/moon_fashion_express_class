@@ -66,7 +66,7 @@ export class MoiCashBookService extends BaseService<
             category: "JOURNAL",
             status: "DRAFT",
             // narration: `MOI Cash Book: ${data.type} — ${data.purpose}`,
-            narration: `MOI Cash Book: For testing purpose only`,
+            narration: `Cash Book: For testing purpose only`,
             companyProfileId: data.companyProfileId,
             lines: {
               create: journalLines,
