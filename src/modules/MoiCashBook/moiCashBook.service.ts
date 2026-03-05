@@ -29,7 +29,19 @@ export class MoiCashBookService extends BaseService<
   // =========================================================================
 
   public async create(data: CreateMoiCashBookInput, include?: any) {
-    return super.create(data, include);
+    const getJournal = await this.prisma.journal.findFirst({
+      where: {
+        OR: [{ id: data.cashAccountId }, { id: data.advanceAccountId }],
+      },
+    });
+    console.log({ getJournal });
+    const journalPayloadData = {
+      category: "JOURNAL",
+      compmanyProfileId: data.companyProfileId,
+      date: new Date(),
+      lines: [{}],
+    };
+    // return super.create(data, include);
   }
 
   public async findMany(
