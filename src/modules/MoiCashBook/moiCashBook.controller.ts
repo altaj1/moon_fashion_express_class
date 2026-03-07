@@ -134,10 +134,98 @@ export class MoiCashBookController extends BaseController {
   /**
    * Get summaries by employee
    */
+  // public getSummaries = async (req: Request, res: Response) => {
+  //   this.logAction("getSummaries", req, {});
+  //   const pagination = this.extractPaginationParams(req);
+  //   const query = req.validatedQuery || req.query;
+  //   const { search, type, status, dateFrom, dateTo, sortBy, sortOrder } = query;
+  //   const filters: any = {};
+  //   if (type) {
+  //     filters.type = type;
+  //   }
+  //   if (status) {
+  //     filters.status = status;
+  //   }
+  //   if (search) {
+  //     filters.OR = [
+  //       { purpose: { contains: search, mode: "insensitive" } },
+  //       { voucherNo: { contains: search, mode: "insensitive" } },
+  //       { purpose: { contains: search, mode: "insensitive" } },
+  //       { remarks: { contains: search, mode: "insensitive" } },
+  //     ];
+  //   }
+  //   // if (dateFrom || dateTo) {
+  //   //   filters.date = {};
+  //   //   if (dateFrom) {
+  //   //     filters.date.gte = new Date(dateFrom);
+  //   //   }
+  //   //   if (dateTo) {
+  //   //     filters.date.lte = new Date(dateTo);
+  //   //   }
+  //   // }
+
+  //   const orderBy =
+  //     sortBy && sortOrder
+  //       ? {
+  //           [sortBy]: sortOrder,
+  //         }
+  //       : undefined;
+  //   const result = await this.service.getSummaries();
+
+  //   return this.sendResponse(
+  //     res,
+  //     "Employee summaries retrieved successfully",
+  //     HTTPStatusCode.OK,
+  //     result,
+  //   );
+  // };
+
   public getSummaries = async (req: Request, res: Response) => {
     this.logAction("getSummaries", req, {});
 
-    const result = await this.service.getSummaries();
+    const pagination = this.extractPaginationParams(req);
+    const query = req.validatedQuery || req.query;
+
+    const { search, type, status, dateFrom, dateTo, sortBy, sortOrder } = query;
+
+    const filters: any = {};
+
+    if (type) {
+      filters.type = type;
+    }
+
+    if (status) {
+      filters.status = status;
+    }
+
+    if (search) {
+      filters.OR = [
+        { purpose: { contains: search, mode: "insensitive" } },
+        { voucherNo: { contains: search, mode: "insensitive" } },
+        { remarks: { contains: search, mode: "insensitive" } },
+        { employee: { firstName: { contains: search, mode: "insensitive" } } },
+        { employee: { lastName: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (dateFrom || dateTo) {
+      filters.date = {};
+      if (dateFrom) filters.date.gte = new Date(dateFrom);
+      if (dateTo) filters.date.lte = new Date(dateTo);
+    }
+
+    const orderBy =
+      sortBy && sortOrder
+        ? {
+            [sortBy]: sortOrder,
+          }
+        : { createdAt: "desc" };
+
+    const result = await this.service.getSummaries(
+      { ...filters, search },
+      pagination,
+      orderBy,
+    );
 
     return this.sendResponse(
       res,
