@@ -287,7 +287,9 @@ export class OrderService extends BaseService<
       }
 
       if (dateTo) {
-        filters.orderDate.lte = new Date(dateTo as string);
+        const end = new Date(dateTo as string);
+        end.setHours(23, 59, 59, 999);
+        filters.orderDate.lte = end;
       }
     }
 
@@ -349,6 +351,17 @@ export class OrderService extends BaseService<
       },
     });
 
+    // Enrich with total order amount
+    const enrichedData = data.map((order: any) => {
+      let totalAmount = 0;
+      order.orderItems?.forEach((oi: any) => {
+        totalAmount += Number(oi.fabricItem?.totalAmount || 0);
+        totalAmount += Number(oi.labelItem?.totalAmount || 0);
+        totalAmount += Number(oi.cartonItem?.totalAmount || 0);
+      });
+      return { ...order, totalAmount };
+    });
+
     return {
       page,
       limit,
@@ -356,7 +369,7 @@ export class OrderService extends BaseService<
       totalPages: Math.ceil(total / limit),
       hasNext: page * limit < total,
       hasPrevious: page > 1,
-      data,
+      data: enrichedData,
     };
   }
   public async analytics(
@@ -451,7 +464,7 @@ export class OrderService extends BaseService<
     }));
   }
   public async findById(id: string, include?: any) {
-    return super.findById(id, {
+    const result = await super.findById(id, {
       buyer: true,
       user: true,
       // invoiceTerms: true,
@@ -481,6 +494,18 @@ export class OrderService extends BaseService<
         },
       },
     });
+
+    if (result) {
+      let totalAmount = 0;
+      (result as any).orderItems?.forEach((oi: any) => {
+        totalAmount += Number(oi.fabricItem?.totalAmount || 0);
+        totalAmount += Number(oi.labelItem?.totalAmount || 0);
+        totalAmount += Number(oi.cartonItem?.totalAmount || 0);
+      });
+      return { ...result, totalAmount };
+    }
+
+    return result;
   }
 
   public async updateById(
