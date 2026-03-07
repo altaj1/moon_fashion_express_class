@@ -27,6 +27,9 @@ export class MoiCashBookRoutes {
       params: MoiCashBookValidation.params.id,
     });
 
+    const listValidator = validateRequest({
+      query: MoiCashBookValidation.query.list,
+    });
     // Define Routes
     this.router.post(
       "/",
@@ -35,6 +38,7 @@ export class MoiCashBookRoutes {
     );
     this.router.get(
       "/summaries",
+      listValidator,
       asyncHandler((req, res) => this.controller.getSummaries(req, res)),
     );
     this.router.get(

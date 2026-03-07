@@ -179,12 +179,34 @@ export class MoiCashBookService extends BaseService<
     return super.deleteById(id);
   }
 
-  public async getSummaries() {
-    // 1. Get all approved/settled transactions linked to employees
+  public async getSummaries(filters: any, pagination: any, orderBy: any) {
+    console.log(JSON.stringify(filters, null, 2));
+    const { search, ...restFilters } = filters;
     const transactions = await this.prisma.moiCashBook.findMany({
       where: {
         status: { in: ["APPROVED", "SETTLED"] },
+        ...restFilters,
+
+        ...(search && {
+          employee: {
+            OR: [
+              {
+                firstName: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                lastName: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        }),
       },
+
       include: {
         employee: {
           select: {
@@ -195,13 +217,17 @@ export class MoiCashBookService extends BaseService<
           },
         },
       },
+
+      orderBy,
+      skip: pagination?.skip,
+      take: pagination?.take,
     });
 
-    // 2. Aggregate by employeeId
     const summaryMap: Record<string, any> = {};
 
     for (const tx of transactions) {
       const empId = tx.employeeId;
+
       if (!summaryMap[empId]) {
         summaryMap[empId] = {
           id: empId,
@@ -215,13 +241,13 @@ export class MoiCashBookService extends BaseService<
       }
 
       const amount = Number(tx.amount);
+
       if (tx.type === "ISSUE") {
         summaryMap[empId].totalIssuedAmount += amount;
       } else if (tx.type === "SETTLE") {
         summaryMap[empId].totalReturnedAmount += amount;
       }
 
-      // Update lastTransaction if this one is newer
       if (
         new Date(tx.createdAt) > new Date(summaryMap[empId].lastTransaction)
       ) {
@@ -229,13 +255,84 @@ export class MoiCashBookService extends BaseService<
       }
     }
 
-    // 3. Calculate Outstanding and format result
     return Object.values(summaryMap).map((s: any) => ({
       ...s,
       outstandingAmount: s.totalIssuedAmount - s.totalReturnedAmount,
     }));
   }
+  // public async getSummaries(filters: any, pagination: any, orderBy: any) {
+  //   const transactions = await this.prisma.moiCashBook.findMany({
+  //     where: {
+  //       status: { in: ["APPROVED", "SETTLED"] },
+  //       ...filters,
+  //     },
+  //     include: {
+  //       employee: {
+  //         select: {
+  //           id: true,
+  //           firstName: true,
+  //           lastName: true,
+  //           designation: true,
+  //         },
+  //       },
+  //     },
+  //     orderBy,
+  //     skip: pagination.skip,
+  //     take: pagination.take,
+  //   });
 
+  //   const summaryMap: Record<string, any> = {};
+
+  //   for (const tx of transactions) {
+  //     const empId = tx.employeeId;
+
+  //     if (!summaryMap[empId]) {
+  //       summaryMap[empId] = {
+  //         id: empId,
+  //         name: `${tx.employee.firstName} ${tx.employee.lastName}`,
+  //         designation: tx.employee.designation,
+  //         totalIssuedAmount: 0,
+  //         totalReturnedAmount: 0,
+  //         outstandingAmount: 0,
+  //         lastTransaction: tx.createdAt,
+  //       };
+  //     }
+
+  //     const amount = Number(tx.amount);
+
+  //     if (tx.type === "ISSUE") {
+  //       summaryMap[empId].totalIssuedAmount += amount;
+  //     } else if (tx.type === "SETTLE") {
+  //       summaryMap[empId].totalReturnedAmount += amount;
+  //     }
+
+  //     if (
+  //       new Date(tx.createdAt) > new Date(summaryMap[empId].lastTransaction)
+  //     ) {
+  //       summaryMap[empId].lastTransaction = tx.createdAt;
+  //     }
+  //   }
+
+  //   return Object.values(summaryMap).map((s: any) => ({
+  //     ...s,
+  //     outstandingAmount: s.totalIssuedAmount - s.totalReturnedAmount,
+  //   }));
+  // }
+
+  /*************  ✨ Windsurf Command ⭐  *************/
+  /**
+   * Returns a summary of the employee's outstanding amount,
+   * including the total issued, total returned, and last transaction date.
+   *
+   * If no transactions exist for the employee, this function will
+   * attempt to fetch the employee's information independently and
+   * return a summary with zeros for all amounts and null for the last
+   * transaction date.
+   *
+   * @param {string} employeeId - The ID of the employee to fetch the summary for.
+   * @return {Promise<{id: string, name: string, designation: string, totalIssuedAmount: number, totalReturnedAmount: number, outstandingAmount: number, lastTransaction: Date | null}>}
+   */
+  /*******  00595730-54fd-4b6f-b522-f03b384a81ca  *******/
   public async getEmployeeSummary(employeeId: string) {
     const transactions = await this.prisma.moiCashBook.findMany({
       where: {
