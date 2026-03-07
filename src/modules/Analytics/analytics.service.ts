@@ -34,7 +34,9 @@ export class AnalyticsService extends BaseService<
 
     if (startDate && endDate) {
       dateFilter.gte = new Date(startDate);
-      dateFilter.lte = new Date(endDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
     }
 
     const buyerWhere = startDate && endDate ? { createdAt: dateFilter } : {};
@@ -59,7 +61,7 @@ export class AnalyticsService extends BaseService<
     };
   }
 
-  public async getFinancialOverview() {
+  public async getFinancialOverview(startDate?: string, endDate?: string) {
     const [
       cash,
       bank,
@@ -70,14 +72,14 @@ export class AnalyticsService extends BaseService<
       loanOutstanding,
       employeeAdvanceOutstanding,
     ] = await Promise.all([
-      this.getCashBalance(),
-      this.getBankBalance(),
-      this.getReceivable(),
-      this.getPayable(),
-      this.getMonthlyRevenue(),
-      this.getMonthlyExpense(),
-      this.getLoanOutstanding(),
-      this.getEmployeeAdvanceOutstanding(),
+      this.getCashBalance(endDate),
+      this.getBankBalance(endDate),
+      this.getReceivable(endDate),
+      this.getPayable(endDate),
+      this.getMonthlyRevenue(startDate, endDate),
+      this.getMonthlyExpense(startDate, endDate),
+      this.getLoanOutstanding(endDate),
+      this.getEmployeeAdvanceOutstanding(endDate),
     ]);
 
     const netProfit = revenue - expense;
@@ -97,14 +99,73 @@ export class AnalyticsService extends BaseService<
     };
   }
 
-  public async getRevenueTrend() {
+  public async getRevenueTrend(startDate?: string, endDate?: string) {
     const months: { month: string; revenue: number; expense: number }[] = [];
-    const now = new Date();
+    let rangeStart: Date;
+    let rangeEnd: Date;
 
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+    if (startDate && endDate) {
+      rangeStart = new Date(startDate);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(endDate);
+      rangeEnd.setHours(23, 59, 59, 999);
+    } else {
+      rangeEnd = new Date();
+      rangeEnd.setHours(23, 59, 59, 999);
+      rangeStart = new Date(
+        rangeEnd.getFullYear(),
+        rangeEnd.getMonth() - 11,
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
+    }
+
+    const startCursor = new Date(
+      rangeStart.getFullYear(),
+      rangeStart.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+    const endCursor = new Date(
+      rangeEnd.getFullYear(),
+      rangeEnd.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+
+    for (
+      let cursor = new Date(startCursor);
+      cursor <= endCursor;
+      cursor.setMonth(cursor.getMonth() + 1)
+    ) {
+      const start = new Date(
+        cursor.getFullYear(),
+        cursor.getMonth(),
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
+      const monthEnd = new Date(
+        cursor.getFullYear(),
+        cursor.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
+      const end = monthEnd > rangeEnd ? rangeEnd : monthEnd;
       const label = start.toLocaleString("default", {
         month: "short",
         year: "2-digit",
@@ -154,6 +215,7 @@ export class AnalyticsService extends BaseService<
     if (startDate && endDate) {
       rangeStart = new Date(startDate);
       rangeEnd = new Date(endDate);
+      rangeEnd.setHours(23, 59, 59, 999);
     } else {
       rangeEnd = new Date();
       rangeStart = new Date();
@@ -205,7 +267,9 @@ export class AnalyticsService extends BaseService<
     const dateFilter: any = {};
     if (startDate && endDate) {
       dateFilter.gte = new Date(startDate);
-      dateFilter.lte = new Date(endDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
     }
     const hasDateFilter = startDate && endDate;
 
@@ -283,11 +347,24 @@ export class AnalyticsService extends BaseService<
     return result;
   }
 
-  public async getARaging() {
+  public async getARaging(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.gte = start;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const entries = await this.prisma.journalEntry.findMany({
       where: {
         buyerId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+        ...(startDate || endDate ? { date: dateFilter } : {}),
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -299,13 +376,14 @@ export class AnalyticsService extends BaseService<
       { label: "90+ days", min: 91, max: Infinity, amount: 0 },
     ];
 
-    const now = new Date();
-    entries.forEach((entry) => {
+    const now = endDate ? new Date(endDate) : new Date();
+    now.setHours(23, 59, 59, 999);
+    entries.forEach((entry: any) => {
       const ageDays = Math.floor(
         (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
       );
       const net = entry.lines.reduce(
-        (sum, l) =>
+        (sum: number, l: any) =>
           l.type === JournalEntryType.DEBIT
             ? sum + Number(l.amount)
             : sum - Number(l.amount),
@@ -322,11 +400,24 @@ export class AnalyticsService extends BaseService<
     }));
   }
 
-  public async getAPaging() {
+  public async getAPaging(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.gte = start;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const entries = await this.prisma.journalEntry.findMany({
       where: {
         supplierId: { not: null },
         status: { in: [JournalEntryStatus.POSTED, JournalEntryStatus.DRAFT] },
+        ...(startDate || endDate ? { date: dateFilter } : {}),
       },
       include: { lines: { select: { type: true, amount: true } } },
     });
@@ -338,8 +429,9 @@ export class AnalyticsService extends BaseService<
       { label: "90+ days", min: 91, max: Infinity, amount: 0 },
     ];
 
-    const now = new Date();
-    entries.forEach((entry) => {
+    const now = endDate ? new Date(endDate) : new Date();
+    now.setHours(23, 59, 59, 999);
+    entries.forEach((entry: any) => {
       const ageDays = Math.floor(
         (now.getTime() - new Date(entry.createdAt).getTime()) / 86400000,
       );
@@ -361,18 +453,35 @@ export class AnalyticsService extends BaseService<
     }));
   }
 
-  public async getCashFlow(weeks = 6) {
+  public async getCashFlow(weeks = 6, startDate?: string, endDate?: string) {
     const result: { week: string; inflow: number; outflow: number }[] = [];
-    const now = new Date();
+    let rangeStart: Date;
+    let rangeEnd: Date;
 
-    for (let i = weeks - 1; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - i * 7 - 6);
-      weekStart.setHours(0, 0, 0, 0);
+    if (startDate && endDate) {
+      rangeStart = new Date(startDate);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(endDate);
+      rangeEnd.setHours(23, 59, 59, 999);
+    } else {
+      rangeEnd = new Date();
+      rangeEnd.setHours(23, 59, 59, 999);
+      rangeStart = new Date(rangeEnd);
+      rangeStart.setDate(rangeEnd.getDate() - (weeks * 7 - 1));
+      rangeStart.setHours(0, 0, 0, 0);
+    }
+
+    let weekIndex = 1;
+    for (
+      let weekStart = new Date(rangeStart);
+      weekStart <= rangeEnd;
+      weekStart.setDate(weekStart.getDate() + 7)
+    ) {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
-      const weekLabel = `W${weeks - i}`;
+      const boundedWeekEnd = weekEnd > rangeEnd ? rangeEnd : weekEnd;
+      const weekLabel = `W${weekIndex++}`;
 
       const [debitLines, creditLines] = await Promise.all([
         this.prisma.journalLine.findMany({
@@ -381,7 +490,7 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               is: {
                 status: JournalEntryStatus.POSTED,
-                date: { gte: weekStart, lte: weekEnd },
+                date: { gte: weekStart, lte: boundedWeekEnd },
               },
             },
           },
@@ -393,7 +502,7 @@ export class AnalyticsService extends BaseService<
             journalEntry: {
               is: {
                 status: JournalEntryStatus.POSTED,
-                date: { gte: weekStart, lte: weekEnd },
+                date: { gte: weekStart, lte: boundedWeekEnd },
               },
             },
           },
@@ -419,19 +528,41 @@ export class AnalyticsService extends BaseService<
     return result;
   }
 
-  public async getDashboardAlerts() {
+  public async getDashboardAlerts(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.gte = start;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
+    const overdueAnchor = endDate ? new Date(endDate) : new Date();
+    overdueAnchor.setHours(23, 59, 59, 999);
+    const overdueCutoff = new Date(
+      overdueAnchor.getTime() - 30 * 24 * 60 * 60 * 1000,
+    );
+
     const [pendingOrders, overdueAR] = await Promise.all([
       this.prisma.order.count({
         where: {
           status: { in: [OrderStatus.PENDING, OrderStatus.DRAFT] },
           isDeleted: false,
+          ...(startDate || endDate ? { orderDate: dateFilter } : {}),
         },
       }),
       this.prisma.journalEntry.count({
         where: {
           buyerId: { not: null },
           status: JournalEntryStatus.POSTED,
-          createdAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          date: {
+            ...(startDate ? { gte: dateFilter.gte } : {}),
+            lte: overdueCutoff,
+          },
         },
       }),
     ]);
@@ -472,7 +603,14 @@ export class AnalyticsService extends BaseService<
     }, 0);
   }
 
-  private async getCashBalance() {
+  private async getCashBalance(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const lines = await this.prisma.journalLine.findMany({
       where: {
         accountHead: {
@@ -482,6 +620,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
+            ...(endDate ? { date: dateFilter } : {}),
           },
         },
       },
@@ -490,13 +629,21 @@ export class AnalyticsService extends BaseService<
     return this.calculateBalance(lines);
   }
 
-  private async getBankBalance() {
+  private async getBankBalance(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const lines = await this.prisma.journalLine.findMany({
       where: {
         bankId: { not: null },
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
+            ...(endDate ? { date: dateFilter } : {}),
           },
         },
       },
@@ -505,13 +652,21 @@ export class AnalyticsService extends BaseService<
     return this.calculateBalance(lines);
   }
 
-  private async getReceivable() {
+  private async getReceivable(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const lines = await this.prisma.journalLine.findMany({
       where: {
         buyerId: { not: null },
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
+            ...(endDate ? { date: dateFilter } : {}),
           },
         },
       },
@@ -520,13 +675,21 @@ export class AnalyticsService extends BaseService<
     return this.calculateBalance(lines);
   }
 
-  private async getPayable() {
+  private async getPayable(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const lines = await this.prisma.journalLine.findMany({
       where: {
         supplierId: { not: null },
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
+            ...(endDate ? { date: dateFilter } : {}),
           },
         },
       },
@@ -535,10 +698,19 @@ export class AnalyticsService extends BaseService<
     return Math.abs(this.calculateBalance(lines));
   }
 
-  private async getMonthlyRevenue() {
-    const start = new Date();
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
+  private async getMonthlyRevenue(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    } else {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.gte = start;
+    }
 
     const lines = await this.prisma.journalLine.findMany({
       where: {
@@ -548,7 +720,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-            date: { gte: start },
+            date: dateFilter,
           },
         },
       },
@@ -557,10 +729,19 @@ export class AnalyticsService extends BaseService<
     return Math.abs(this.calculateBalance(lines));
   }
 
-  private async getMonthlyExpense() {
-    const start = new Date();
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
+  private async getMonthlyExpense(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    } else {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.gte = start;
+    }
 
     const lines = await this.prisma.journalLine.findMany({
       where: {
@@ -570,7 +751,7 @@ export class AnalyticsService extends BaseService<
         journalEntry: {
           is: {
             status: JournalEntryStatus.POSTED,
-            date: { gte: start },
+            date: dateFilter,
           },
         },
       },
@@ -579,28 +760,53 @@ export class AnalyticsService extends BaseService<
     return this.calculateBalance(lines);
   }
 
-  private async getLoanOutstanding() {
+  private async getLoanOutstanding(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const loans = await this.prisma.loan.findMany({
-      where: { isDeleted: false },
-      include: { repayments: true },
+      where: {
+        isDeleted: false,
+        ...(endDate ? { createdAt: dateFilter } : {}),
+      },
+      include: {
+        repayments: {
+          where: endDate ? { createdAt: dateFilter } : {},
+        },
+      },
     });
 
-    return loans.reduce((total, loan) => {
+    return loans.reduce((total: number, loan: any) => {
       const paid = loan.repayments.reduce(
-        (sum, r) => sum + Number(r.principal),
+        (sum: number, r: any) => sum + Number(r.principal),
         0,
       );
       return total + (Number(loan.principalAmount) - paid);
     }, 0);
   }
 
-  private async getEmployeeAdvanceOutstanding() {
+  private async getEmployeeAdvanceOutstanding(endDate?: string) {
+    const dateFilter: any = {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
     const advances = await this.prisma.moiCashBook.findMany({
       where: {
         status: { in: ["PENDING", "APPROVED"] as any },
+        ...(endDate ? { createdAt: dateFilter } : {}),
       },
     });
-    return advances.reduce((sum, adv) => sum + Number(adv.amount), 0);
+    return advances.reduce(
+      (sum: number, adv: any) => sum + Number(adv.amount),
+      0,
+    );
   }
 
   public async exists(filters: any) {
