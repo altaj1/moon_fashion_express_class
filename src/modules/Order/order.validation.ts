@@ -200,7 +200,7 @@ export const OrderValidation = {
       isLc: z.boolean().optional(),
       productType: z.enum(["FABRIC", "LABEL_TAG", "CARTON"]).optional(),
       sortBy: z
-        .enum(["orderNumber", "orderDate", "createdAt"])
+        .enum(["orderNumber", "orderDate", "createdAt", "updatedAt"])
         .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
       dateFrom: z.string().optional(),

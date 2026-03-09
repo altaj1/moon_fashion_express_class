@@ -133,7 +133,7 @@ export class OrderController extends BaseController {
       );
     }
 
-    const result = await this.service.updateById(id, body);
+    const result = await this.service.updateOrder(id, body);
 
     return this.sendResponse(
       res,

@@ -508,9 +508,9 @@ export class OrderService extends BaseService<
     return result;
   }
 
-  public async updateById(
+  public async updateOrder(
     id: string,
-    data: UpdateOrderInput,
+    data: any,
     userId?: string,
     include?: any,
   ) {
@@ -520,71 +520,200 @@ export class OrderService extends BaseService<
         orderItems,
         buyerId,
         companyProfileId,
-
-        ...invoiceRest
+        ...orderRest
       } = data;
-      const prismaData: any = {
-        ...invoiceRest,
-      };
 
-      // Update buyer relation
-      if (buyerId) {
-        prismaData.buyer = {
-          connect: { id: buyerId },
-        };
-      }
+      return await this.prisma.$transaction(async (tx) => {
+        /** ------------------------
+         * 1️⃣ UPDATE ORDER
+         * ------------------------ */
+        const updatedOrder = await tx.order.update({
+          where: { id },
+          data: {
+            ...orderRest,
+            ...(buyerId && { buyer: { connect: { id: buyerId } } }),
+            ...(companyProfileId && {
+              companyProfile: { connect: { id: companyProfileId } },
+            }),
+          },
+        });
 
-      // Update invoice items (replace old ones)
-      if (companyProfileId) {
-        prismaData.companyProfile = {
-          connect: { id: companyProfileId },
-        };
-      }
-      if (productType && orderItems) {
-        let invoiceItemUpdateData: any;
+        if (!orderItems || !productType) return updatedOrder;
+
+        /** ------------------------
+         * 2️⃣ DETERMINE ITEM TYPE
+         * ------------------------ */
+        let item: any;
+        let itemType: string;
+        let dataKey: string;
+        let foreignKey: string;
+        let itemTable: any;
+        let dataTable: any;
 
         switch (productType) {
           case ProductType.FABRIC:
-            invoiceItemUpdateData = this.mapOrdeItemData(
-              orderItems.fabricItem,
-              "fabricItem",
-            );
+            item = orderItems.fabricItem;
+            itemType = "fabricItem";
+            dataKey = "fabricItemData";
+            foreignKey = "fabricItemId";
+            itemTable = tx.fabricItem;
+            dataTable = tx.fabricItemData;
             break;
 
           case ProductType.LABEL_TAG:
-            invoiceItemUpdateData = this.mapOrdeItemData(
-              orderItems.labelItem,
-              "labelItem",
-            );
+            item = orderItems.labelItem;
+            itemType = "labelItem";
+            dataKey = "labelItemData";
+            foreignKey = "labelItemId";
+            itemTable = tx.labelItem;
+            dataTable = tx.labelItemData;
             break;
 
           case ProductType.CARTON:
-            invoiceItemUpdateData = this.mapOrdeItemData(
-              orderItems.cartonItem,
-              "cartonItem",
-            );
+            item = orderItems.cartonItem;
+            itemType = "cartonItem";
+            dataKey = "cartonItemData";
+            foreignKey = "cartonItemId";
+            itemTable = tx.cartonItem;
+            dataTable = tx.cartonItemData;
             break;
 
           default:
-            throw new AppError(400, `Invalid order type '${productType}'`);
+            throw new AppError(400, `Invalid product type '${productType}'`);
         }
 
-        prismaData.orderItems = {
-          deleteMany: {},
-          create: [invoiceItemUpdateData],
-        };
-      }
-      const result = await prisma.order.update({
-        where: { id },
-        data: prismaData,
-        include,
+        if (!item) return updatedOrder;
+
+        /** ------------------------
+         * 3️⃣ PROCESS NESTED DATA
+         * (same as create logic)
+         * ------------------------ */
+        const nestedData =
+          item[dataKey]?.map((d: any) => {
+            let totalAmount = 0;
+
+            if (itemType === "cartonItem") {
+              totalAmount = Number(d.unitPrice ?? 0) * Number(d.cartonQty ?? 0);
+            } else if (itemType === "fabricItem") {
+              totalAmount =
+                Number(d.unitPrice ?? 0) * Number(d.quantityYds ?? 0);
+            } else if (itemType === "labelItem") {
+              totalAmount =
+                Number(d.unitPrice ?? 0) * Number(d.quantityPcs ?? 0);
+            }
+
+            return {
+              ...d,
+              totalAmount,
+            };
+          }) || [];
+
+        /** ------------------------
+         * 4️⃣ CALCULATE TOTALS
+         * ------------------------ */
+        let totals: any = {};
+
+        if (itemType === "fabricItem") {
+          totals = this.calculateFabricItemTotals(nestedData);
+        }
+
+        if (itemType === "labelItem") {
+          totals = this.calculateLabelItemTotals(nestedData);
+        }
+
+        if (itemType === "cartonItem") {
+          totals = this.calculateCartonItemTotals(nestedData);
+        }
+
+        /** ------------------------
+         * 5️⃣ UPDATE MAIN ITEM
+         * ------------------------ */
+        const { [dataKey]: nestedArray, ...itemWithoutNested } = item;
+
+        await itemTable.update({
+          where: { id: item.id },
+          data: {
+            ...itemWithoutNested,
+            ...totals,
+          },
+        });
+
+        /** ------------------------
+         * 6️⃣ SPLIT CREATE / UPDATE
+         * ------------------------ */
+        const createRows = nestedData.filter((d: any) => !d.id);
+        const updateRows = nestedData.filter((d: any) => d.id);
+
+        /** ------------------------
+         * 7️⃣ FIND EXISTING ROWS
+         * ------------------------ */
+        const existing = await dataTable.findMany({
+          where: { [foreignKey]: item.id },
+          select: { id: true },
+        });
+
+        const existingIds = existing.map((e: any) => e.id);
+        const incomingIds = updateRows.map((i: any) => i.id);
+
+        const deleteIds = existingIds.filter(
+          (id: string) => !incomingIds.includes(id),
+        );
+
+        /** ------------------------
+         * 8️⃣ DELETE REMOVED ROWS
+         * ------------------------ */
+        if (deleteIds.length) {
+          await dataTable.deleteMany({
+            where: { id: { in: deleteIds } },
+          });
+        }
+
+        /** ------------------------
+         * 9️⃣ CREATE NEW ROWS
+         * ------------------------ */
+        if (createRows.length) {
+          await dataTable.createMany({
+            data: createRows.map((r: any) => ({
+              ...r,
+              [foreignKey]: item.id,
+            })),
+          });
+        }
+
+        /** ------------------------
+         * 🔟 UPDATE ROWS
+         * ------------------------ */
+        for (const row of updateRows) {
+          await dataTable.update({
+            where: { id: row.id },
+            data: row,
+          });
+        }
+
+        /** ------------------------
+         * RETURN UPDATED ORDER
+         * ------------------------ */
+        return tx.order.findUnique({
+          where: { id },
+          include: {
+            buyer: true,
+            user: true,
+            companyProfile: true,
+            orderItems: {
+              include: {
+                fabricItem: { include: { fabricItemData: true } },
+                labelItem: { include: { labelItemData: true } },
+                cartonItem: { include: { cartonItemData: true } },
+              },
+            },
+          },
+        });
       });
-      return result;
     } catch (err: any) {
-      console.error("Invoice update failed:", err);
+      console.error("Order update failed:", err);
 
       throw new AppError(
-        err.message || "Failed to update invoice",
+        err.message || "Failed to update order",
         err.statusCode || 500,
       );
     }

@@ -527,32 +527,6 @@ enum JournalEntryStatus {
   POSTED
 }
 
-// model AccountHead {
-//   id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   name           String
-//   code           String?     @unique
-//   type           AccountType
-//   description    String?
-//   openingBalance Decimal?    @default(0)
-
-//   parentId         String?       @db.Uuid
-//   parent           AccountHead?  @relation("AccountHeadHierarchy", fields: [parentId], references: [id])
-//   children         AccountHead[] @relation("AccountHeadHierarchy")
-//   isControlAccount Boolean       @default(false)
-
-//   companyProfileId String?         @db.Uuid
-//   companyProfile   CompanyProfile? @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
-
-//   journalLines JournalLine[]
-//   cashAccounts MoiCashBook[] @relation("CashAccount")
-//   advanceAccounts MoiCashBook[] @relation("AdvanceAccount")
-//   expenseAccounts MoiCashBook[] @relation("ExpenseAccount")
-//   isDeleted Boolean  @default(false)
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@map("account_heads")
-// }
 model AccountHead {
   id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
@@ -704,41 +678,6 @@ model LoanRepayment {
 // PETTY CASH & EMPLOYEE ADVANCE (IOU)
 // ==========================================
 
-// model MoiCashBook {
-//   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   voucherNo String  @unique // e.g., PC-2026-001
-//   amount    Decimal @db.Decimal(20, 2)
-//   purpose   String // e.g., "Office Stationery" or "Travel Advance"
-
-//   // The person receiving the cash
-//   employeeId String @db.Uuid
-//   employee   User   @relation("EmployeeIOU", fields: [employeeId], references: [id])
-
-//   // Multi-entity support
-//   companyProfileId String         @db.Uuid
-//   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
-
-//   // Tracking the lifecycle
-//   type   AdvanceType   @default(ISSUE) // ISSUE (Cash out) or SETTLE (Return/Adjustment)
-//   status AdvanceStatus @default(PENDING)
-
-//   // Link to your main Accounting Ledger
-//   journalEntryId String?       @unique @db.Uuid
-//   journalEntry   JournalEntry? @relation("AdvanceJournal", fields: [journalEntryId], references: [id])
-// //  Account Head
-// cashAccountId String?      @db.Uuid
-// cashAccount   AccountHead? @relation(fields: [cashAccountId], references: [id])
-// advanceAccountId String?      @db.Uuid
-// advanceAccount   AccountHead? @relation(fields: [advanceAccountId], references: [id])
-// expenseAccountId String?      @db.Uuid
-// expenseAccount   AccountHead? @relation(fields: [expenseAccountId], references: [id])
-//   // Metadata
-//   remarks   String?
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@map("employee_advances")
-// }
 
 model MoiCashBook {
   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
