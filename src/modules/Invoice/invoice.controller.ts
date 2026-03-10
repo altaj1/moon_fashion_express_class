@@ -55,6 +55,11 @@ export class InvoiceController extends BaseController {
       filters.OR = [
         { piNumber: { contains: search, mode: "insensitive" } },
         ...(searchEnum ? [{ status: searchEnum }] : []),
+        {
+          order: {
+            orderNumber: { contains: search, mode: "insensitive" },
+          },
+        },
       ];
     }
 

@@ -55,6 +55,7 @@ export class SupplierService extends BaseService<
         { phone: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
         { address: { contains: search, mode: "insensitive" } },
+        { supplierCode: { contains: search, mode: "insensitive" } },
       ];
     }
 
